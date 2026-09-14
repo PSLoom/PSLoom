@@ -1,0 +1,41 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+    tags: ['psloom/v*', 'reed/v*']
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # tags are needed for versioning
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Restore
+        run: dotnet restore PSLoom.slnx
+
+      - name: Build
+        run: dotnet build PSLoom.slnx --configuration Release --no-restore
+
+      - name: Test
+        run: dotnet test --solution PSLoom.slnx --configuration Release --no-build
+
+      - name: Startup budget
+        shell: pwsh
+        run: ./benchmarks/Measure-Startup.ps1
