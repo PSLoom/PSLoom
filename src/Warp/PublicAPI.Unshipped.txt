@@ -1,1 +1,8 @@
 #nullable enable
+PSLoom.Warp.PowerShellException
+PSLoom.Warp.PowerShellException.ErrorCategory.get -> System.Management.Automation.ErrorCategory
+PSLoom.Warp.PowerShellException.ErrorId.get -> string!
+PSLoom.Warp.PowerShellException.PowerShellException(string! errorId, System.Management.Automation.ErrorCategory errorCategory, string! message, object? targetObject = null, System.Exception? innerException = null) -> void
+PSLoom.Warp.PowerShellException.TargetObject.get -> object?
+PSLoom.Warp.WarpException
+virtual PSLoom.Warp.PowerShellException.ToErrorRecord() -> System.Management.Automation.ErrorRecord!
