@@ -1,8 +1,37 @@
 #nullable enable
+override PSLoom.Warp.Storage.CreelPath.Equals(object? obj) -> bool
+override PSLoom.Warp.Storage.CreelPath.GetHashCode() -> int
+override PSLoom.Warp.Storage.CreelPath.ToString() -> string!
 PSLoom.Warp.PowerShellException
 PSLoom.Warp.PowerShellException.ErrorCategory.get -> System.Management.Automation.ErrorCategory
 PSLoom.Warp.PowerShellException.ErrorId.get -> string!
 PSLoom.Warp.PowerShellException.PowerShellException(string! errorId, System.Management.Automation.ErrorCategory errorCategory, string! message, object? targetObject = null, System.Exception? innerException = null) -> void
 PSLoom.Warp.PowerShellException.TargetObject.get -> object?
+PSLoom.Warp.Storage.CreelPath
+PSLoom.Warp.Storage.CreelPath.Combine(string! relativePath) -> PSLoom.Warp.Storage.CreelPath
+PSLoom.Warp.Storage.CreelPath.CreelPath() -> void
+PSLoom.Warp.Storage.CreelPath.Equals(PSLoom.Warp.Storage.CreelPath other) -> bool
+PSLoom.Warp.Storage.CreelPath.FullPath.get -> string!
+PSLoom.Warp.Storage.CreelPath.IsDefault.get -> bool
+PSLoom.Warp.Storage.CreelPath.IsRoot.get -> bool
+PSLoom.Warp.Storage.CreelPath.Name.get -> string!
+PSLoom.Warp.Storage.CreelPath.Parent.get -> PSLoom.Warp.Storage.CreelPath?
+PSLoom.Warp.Storage.CreelPath.RelativePath.get -> string!
+PSLoom.Warp.Storage.CreelPathException
+PSLoom.Warp.Storage.CreelPathException.RelativePath.get -> string!
+PSLoom.Warp.Storage.CreelPathException.Root.get -> string!
+PSLoom.Warp.Storage.CreelPathException.Violation.get -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation.Escape = 2 -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation.InvalidCharacters = 1 -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation.LinkEscape = 3 -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation.Rooted = 0 -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.IHarnessStorage
+PSLoom.Warp.Storage.IHarnessStorage.Resolve(string! relativePath) -> PSLoom.Warp.Storage.CreelPath
+PSLoom.Warp.Storage.IHarnessStorage.Root.get -> PSLoom.Warp.Storage.CreelPath
 PSLoom.Warp.WarpException
+static PSLoom.Warp.Storage.CreelPath.implicit operator string!(PSLoom.Warp.Storage.CreelPath path) -> string!
+static PSLoom.Warp.Storage.CreelPath.operator !=(PSLoom.Warp.Storage.CreelPath left, PSLoom.Warp.Storage.CreelPath right) -> bool
+static PSLoom.Warp.Storage.CreelPath.operator /(PSLoom.Warp.Storage.CreelPath path, string! relativePath) -> PSLoom.Warp.Storage.CreelPath
+static PSLoom.Warp.Storage.CreelPath.operator ==(PSLoom.Warp.Storage.CreelPath left, PSLoom.Warp.Storage.CreelPath right) -> bool
 virtual PSLoom.Warp.PowerShellException.ToErrorRecord() -> System.Management.Automation.ErrorRecord!
