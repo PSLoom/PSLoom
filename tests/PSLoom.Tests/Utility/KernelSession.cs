@@ -5,6 +5,7 @@ using System.Collections.ObjectModel;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using PSLoom.Runtime;
+using PSLoom.Runtime.Harnesses;
 using PSLoom.Runtime.Loom;
 using PSLoom.Runtime.Styles;
 using PSLoom.TestKit;
@@ -22,6 +23,11 @@ internal sealed class KernelSession : IDisposable {
 
     Runspace = PowerShellHost.CreateRunspace(state => state.AddCmdletsFrom(typeof(KernelException).Assembly));
     Shell = PowerShellHost.CreateShell(Runspace);
+
+    // The fixture harness is test-only; allow it like a first-party one. Installs must never touch the user's Creel.
+    Loom.FirstParty.Add("Fixture");
+    Loom.InstallLock = new HarnessInstallLock(Path.Combine(Path.GetTempPath(), $"psloom-tests-{Guid.NewGuid():N}", "install.lock"),
+      TimeSpan.FromSeconds(5), TimeSpan.FromMilliseconds(20));
   }
 
   public LoomSession Loom => LoomSession.PerRunspace.For(Runspace);

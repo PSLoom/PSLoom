@@ -3,6 +3,7 @@
 
 using System.Diagnostics;
 using System.Management.Automation.Language;
+using PSLoom.Runtime.Harnesses;
 using PSLoom.Runtime.Hooks;
 using PSLoom.Runtime.Loom;
 using PSLoom.Runtime.Verbs;
@@ -12,15 +13,11 @@ using PSLoom.Warp.Dsl;
 namespace PSLoom.Cmdlets.Loom;
 
 /// <summary>
-///   Runs a draft once per session: loads the harnesses it threads, validates verb scopes, executes it with the loom
-///   vocabulary, reports every verb failure, then raises <c>SessionStarting</c>.
+///   Runs a draft once per session: provides the first-party harnesses it threads (installing missing ones on a first run),
+///   validates verb scopes, executes it with the loom vocabulary, reports every verb failure, then raises <c>SessionStarting</c>.
 /// </summary>
 [Cmdlet(VerbsLifecycle.Invoke, "Loom")]
 public sealed class InvokeLoomCmdlet : PSCmdlet {
-  private const string HARNESS_MODULE_PREFIX = "PSLoom.";
-  private const string MODULE_NOT_FOUND_ERROR_ID = "Modules_ModuleNotFound";
-  private const string IMPORT_SCRIPT = "param($Name) Import-Module -Name $Name -Global -ErrorAction Stop";
-
   /// <summary>
   ///   Gets or sets the draft.
   /// </summary>
@@ -28,7 +25,7 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
   public ScriptBlock Draft { get; set; } = null!;
 
   /// <summary>
-  ///   Gets or sets a value indicating whether to load harnesses and validate the draft without executing it.
+  ///   Gets or sets a value indicating whether to load harnesses and validate the draft without executing or installing anything.
   /// </summary>
   [Parameter]
   public SwitchParameter Validate { get; set; }
@@ -82,18 +79,20 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
 
   private List<ErrorRecord> Prepare(LoomSession session, LoomRun run, ScriptBlockAst draftAst) {
     var started = Stopwatch.GetTimestamp();
-    var (harnesses, threadErrors) = DraftAnalyzer.FindThreads(draftAst);
+    var (threads, threadErrors) = DraftAnalyzer.FindThreads(draftAst);
     var problems = threadErrors.Select(error => error.ToErrorRecord()).ToList();
-    AddPhase(run, LoomPhase.Prepass, nameof(LoomPhase.Prepass), null, started);
+    AddPhase(run, LoomPhase.Prepass, nameof(LoomPhase.Prepass), started);
 
-    foreach (var harness in harnesses) {
-      started = Stopwatch.GetTimestamp();
+    if (problems.Count > 0) {
+      return problems;
+    }
 
-      if (EnsureHarness(session, harness) is { } importError) {
-        problems.Add(importError.ToErrorRecord());
+    var provisioner = new HarnessProvisioner(session, session.ModulesFor(this));
+
+    foreach (var thread in threads) {
+      if (provisioner.Provision(thread, !Validate, run) is { } error) {
+        problems.Add(error.ToErrorRecord());
       }
-
-      AddPhase(run, LoomPhase.Import, harness, harness, started);
     }
 
     if (problems.Count > 0) {
@@ -102,28 +101,9 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
 
     started = Stopwatch.GetTimestamp();
     problems.AddRange(DraftValidator.Validate(draftAst, session.Verbs).Select(error => error.ToErrorRecord()));
-    AddPhase(run, LoomPhase.Validate, nameof(LoomPhase.Validate), null, started);
+    AddPhase(run, LoomPhase.Validate, nameof(LoomPhase.Validate), started);
 
     return problems;
-  }
-
-  private LoomException? EnsureHarness(LoomSession session, string harness) {
-    if (session.Harnesses.TryGetByName(harness, out _)) {
-      return null;
-    }
-
-    var moduleName = HARNESS_MODULE_PREFIX + harness;
-
-    try {
-      InvokeCommand.InvokeScript(IMPORT_SCRIPT, moduleName);
-    }
-    catch (Exception exception) when (exception is not (OutOfMemoryException or StackOverflowException)) {
-      return IsModuleNotFound(exception)
-        ? LoomException.HarnessNotInstalled(harness, moduleName, exception)
-        : LoomException.HarnessImportFailed(harness, moduleName, exception);
-    }
-
-    return session.Harnesses.TryGetByName(harness, out _) ? null : LoomException.NotAHarness(harness, moduleName);
   }
 
   private void Execute(LoomSession session, LoomRun run) {
@@ -148,19 +128,8 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
     }
   }
 
-  private static bool IsModuleNotFound(Exception exception) {
-    for (var current = exception; current is not null; current = current.InnerException) {
-      if (current is IContainsErrorRecord { ErrorRecord.FullyQualifiedErrorId: { } errorId } &&
-          errorId.StartsWith(MODULE_NOT_FOUND_ERROR_ID, StringComparison.Ordinal)) {
-        return true;
-      }
-    }
-
-    return false;
-  }
-
-  private static void AddPhase(LoomRun run, LoomPhase phase, string name, string? harness, long started) {
+  private static void AddPhase(LoomRun run, LoomPhase phase, string name, long started) {
     var elapsed = Stopwatch.GetElapsedTime(started);
-    run.AddTiming(new LoomTiming(phase, name, harness, null, 0, elapsed, elapsed));
+    run.AddTiming(new LoomTiming(phase, name, null, null, 0, elapsed, elapsed));
   }
 }

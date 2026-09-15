@@ -137,10 +137,11 @@ public sealed class InvokeLoomCmdletTests {
   }
 
   [Fact]
-  public void MissingHarnessModule_ReportsInstallCommand() {
+  public void MissingHarnessModule_UnderValidate_ReportsInstallCommandWithoutInstalling() {
     using var session = new KernelSession();
+    session.Loom.FirstParty.Add("DoesNotExist12345");
 
-    session.Run("Invoke-Loom { Thread DoesNotExist12345 }");
+    session.Run("Invoke-Loom -Validate { Thread DoesNotExist12345 }");
 
     var error = session.Streams.Error.ShouldHaveSingleItem();
     error.FullyQualifiedErrorId.ShouldStartWith(LoomException.HARNESS_NOT_INSTALLED);
@@ -152,6 +153,7 @@ public sealed class InvokeLoomCmdletTests {
     using var session = new KernelSession();
 
     // PSLoom.Stub (tests/PSLoom.Tests/TestModules) is a manifest-only module that registers no harness.
+    session.Loom.FirstParty.Add("Stub");
     session.Run("Invoke-Loom { Thread Stub }");
 
     var error = session.Streams.Error.ShouldHaveSingleItem();

@@ -13,6 +13,9 @@ public enum LoomPhase {
   /// <summary>Importing one harness module.</summary>
   Import,
 
+  /// <summary>Installing one missing harness module (first runs only).</summary>
+  Install,
+
   /// <summary>Static scope validation of the draft.</summary>
   Validate,
 

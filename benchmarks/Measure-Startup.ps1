@@ -22,6 +22,10 @@
 
 .PARAMETER Tolerance
   Multiplier applied to every budget to absorb machine noise. Default 1.2.
+
+.PARAMETER AllowHarness
+  Test-only harness names (for example Fixture) added to the session's first-party allowlist through reflection before
+  the draft is timed, so steady-state drafts can be measured with a test harness. Not a product feature.
 #>
 [CmdletBinding()]
 param(
@@ -29,7 +33,8 @@ param(
   [double]$ImportBudgetMilliseconds = 50,
   [string]$DraftPath,
   [double]$DraftBudgetMilliseconds = 100,
-  [double]$Tolerance = 1.2
+  [double]$Tolerance = 1.2,
+  [string[]]$AllowHarness = @()
 )
 
 $ErrorActionPreference = 'Stop'
@@ -38,11 +43,18 @@ $modulesDirectory = Join-Path $PSScriptRoot '..' 'artifacts' 'modules' | Resolve
 $pwsh = (Get-Process -Id $PID).Path
 
 $probe = @'
-param($ModulesDirectory, $DraftPath)
+param($ModulesDirectory, $DraftPath, [string[]]$AllowHarness)
 $env:PSModulePath = $ModulesDirectory + [IO.Path]::PathSeparator + $env:PSModulePath
 $import = [Diagnostics.Stopwatch]::StartNew()
 Import-Module PSLoom
 $import.Stop()
+if ($AllowHarness) {
+  $sessionType = (Get-Module PSLoom).ImplementingAssembly.GetType('PSLoom.Runtime.Loom.LoomSession', $true)
+  $perRunspace = $sessionType.GetProperty('PerRunspace').GetValue($null)
+  $session = $perRunspace.GetType().GetMethod('ForCurrent').Invoke($perRunspace, @())
+  $firstParty = $sessionType.GetProperty('FirstParty').GetValue($session)
+  foreach ($name in $AllowHarness) { $null = $firstParty.Add($name) }
+}
 $draft = 0.0
 if ($DraftPath) {
   $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -60,7 +72,7 @@ function Get-Median([double[]]$Values) {
 }
 
 $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes(
-    "& { $probe } -ModulesDirectory '$modulesDirectory' -DraftPath '$DraftPath'"))
+    "& { $probe } -ModulesDirectory '$modulesDirectory' -DraftPath '$DraftPath' -AllowHarness @($(($AllowHarness | ForEach-Object { "'$_'" }) -join ','))"))
 
 $imports = [Collections.Generic.List[double]]::new()
 $drafts = [Collections.Generic.List[double]]::new()

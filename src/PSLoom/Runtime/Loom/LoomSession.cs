@@ -45,6 +45,25 @@ internal sealed class LoomSession {
   public HarnessDirectory Directory { get; }
 
   /// <summary>
+  ///   Gets the harness names <c>Thread</c> accepts. Starts as the first-party set; tests extend it.
+  /// </summary>
+  public HashSet<string> FirstParty { get; } = FirstPartyHarnesses.CreateSet();
+
+  /// <summary>
+  ///   Gets or sets how module operations are performed for a cmdlet. <see langword="null" /> uses PowerShell itself; tests
+  ///   replace it.
+  /// </summary>
+  internal Func<PSCmdlet, IHarnessModules>? HarnessModulesFactory { get; set; }
+
+  /// <summary>
+  ///   Gets or sets the lock serializing installs across sessions.
+  /// </summary>
+  internal HarnessInstallLock InstallLock {
+    get => field ??= HarnessInstallLock.ForCreel();
+    set;
+  }
+
+  /// <summary>
   ///   Gets the engine intrinsics, once any kernel entry point provided them (held by the runspace's hook wiring).
   /// </summary>
   public EngineIntrinsics? Engine => HookBus.PerRunspace.For(Runspace).Wiring.Engine;
@@ -63,6 +82,9 @@ internal sealed class LoomSession {
   ///   Gets the innermost run executing now.
   /// </summary>
   public LoomRun? CurrentRun => _runs.TryPeek(out var run) ? run : null;
+
+  public IHarnessModules ModulesFor(PSCmdlet cmdlet)
+    => HarnessModulesFactory?.Invoke(cmdlet) ?? new PowerShellHarnessModules(cmdlet);
 
   /// <summary>
   ///   Provides engine intrinsics to the session and its hook wiring; the first call wins.
