@@ -1,6 +1,9 @@
 // Copyright (c) Bruno Sales <me@baliestri.dev>. Licensed under the MIT License.
 // See the LICENSE file in the repository root for full license text.
 
+using System.Management.Automation;
+using System.Reflection;
+using PSLoom.Runtime;
 using PSLoom.TestKit;
 
 namespace PSLoom.Tests.Architecture;
@@ -29,5 +32,20 @@ public sealed class KernelModuleLayoutTests {
     var manifest = RepositoryLayout.ReadDataFile(Path.Combine(moduleDirectory, "PSLoom.psd1"));
 
     manifest["ModuleVersion"].ShouldBe(Path.GetFileName(moduleDirectory));
+  }
+
+  [Fact]
+  public void PublishedKernelManifestExportsEveryCmdletExactly() {
+    var moduleDirectory = RepositoryLayout.GetPublishedModuleDirectory(MODULE_NAME);
+    var manifest = RepositoryLayout.ReadDataFile(Path.Combine(moduleDirectory, "PSLoom.psd1"));
+    var exported = ((object[])manifest["CmdletsToExport"]!).Cast<string>().Order(StringComparer.OrdinalIgnoreCase);
+
+    var implemented = typeof(KernelException).Assembly.GetTypes()
+      .Select(type => type.GetCustomAttribute<CmdletAttribute>())
+      .OfType<CmdletAttribute>()
+      .Select(cmdlet => $"{cmdlet.VerbName}-{cmdlet.NounName}")
+      .Order(StringComparer.OrdinalIgnoreCase);
+
+    exported.ShouldBe(implemented);
   }
 }

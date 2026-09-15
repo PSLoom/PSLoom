@@ -14,7 +14,10 @@
   VariablesToExport = @()
   AliasesToExport = @()
 
-  CmdletsToExport = @()
+  CmdletsToExport = @(
+    'Set-Style', 'Get-Style', 'Test-Style', 'Remove-Style', 'Get-StyleDefinition',
+    'Register-StyleWatcher', 'Unregister-StyleWatcher', 'Trace-Style'
+  )
 
   PrivateData = @{
     PSData = @{
