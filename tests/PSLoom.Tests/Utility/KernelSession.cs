@@ -18,6 +18,7 @@ internal sealed class KernelSession : IDisposable {
   public KernelSession() {
     // Test runspaces host kernel cmdlets directly instead of importing the module, so attach the kernel as the module would.
     Kernel.EnsureAttached();
+    FixtureModule.EnsureOnModulePath();
 
     Runspace = PowerShellHost.CreateRunspace(state => state.AddCmdletsFrom(typeof(KernelException).Assembly));
     Shell = PowerShellHost.CreateShell(Runspace);

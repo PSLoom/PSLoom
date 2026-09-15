@@ -23,6 +23,7 @@
     <Project Path="src/Warp/Warp.csproj" />
   </Folder>
   <Folder Name="/Tests/">
+    <Project Path="tests/PSLoom.Fixture/PSLoom.Fixture.csproj" />
     <Project Path="tests/PSLoom.Reed.Tests/PSLoom.Reed.Tests.csproj" />
     <Project Path="tests/PSLoom.TestKit/PSLoom.TestKit.csproj" />
     <Project Path="tests/PSLoom.Tests/PSLoom.Tests.csproj" />

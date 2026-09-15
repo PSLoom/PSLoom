@@ -7,6 +7,7 @@
 
   <ItemGroup>
     <Content Include="xunit.runner.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="TestModules\**\*.psd1" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,5 +30,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\PSLoom\PSLoom.csproj" />
     <ProjectReference Include="..\PSLoom.TestKit\PSLoom.TestKit.csproj" />
+    <!-- Built and published to artifacts/modules for Thread tests; never loaded as a reference. -->
+    <ProjectReference Include="..\PSLoom.Fixture\PSLoom.Fixture.csproj" ReferenceOutputAssembly="false" Private="false" />
   </ItemGroup>
 </Project>

@@ -1,0 +1,22 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>false</IsTestProject>
+
+    <PowerShellManifest>PSLoom.Fixture.psd1</PowerShellManifest>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Using Include="System.Management.Automation" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Management.Automation" PrivateAssets="all" ExcludeAssets="runtime" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Referenced exactly like a real harness: compile-time only, bound at runtime to the kernel's Warp.dll. -->
+    <ProjectReference Include="..\..\src\Warp\Warp.csproj" Private="false" ExcludeAssets="runtime" />
+  </ItemGroup>
+</Project>
