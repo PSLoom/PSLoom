@@ -15,6 +15,7 @@
   AliasesToExport = @()
 
   CmdletsToExport = @(
+    'Register-Hook', 'Unregister-Hook', 'Get-Hook', 'Trace-Hook',
     'Set-Style', 'Get-Style', 'Test-Style', 'Remove-Style', 'Get-StyleDefinition',
     'Register-StyleWatcher', 'Unregister-StyleWatcher', 'Trace-Style'
   )
