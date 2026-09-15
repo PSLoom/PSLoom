@@ -5,6 +5,8 @@ using System.Collections.ObjectModel;
 using System.Management.Automation;
 using System.Management.Automation.Runspaces;
 using PSLoom.Runtime;
+using PSLoom.Runtime.Loom;
+using PSLoom.Runtime.Styles;
 using PSLoom.TestKit;
 
 namespace PSLoom.Tests.Utility;
@@ -14,9 +16,17 @@ namespace PSLoom.Tests.Utility;
 /// </summary>
 internal sealed class KernelSession : IDisposable {
   public KernelSession() {
+    // Test runspaces host kernel cmdlets directly instead of importing the module, so attach the kernel as the module would.
+    Kernel.EnsureAttached();
+
     Runspace = PowerShellHost.CreateRunspace(state => state.AddCmdletsFrom(typeof(KernelException).Assembly));
     Shell = PowerShellHost.CreateShell(Runspace);
   }
+
+  public LoomSession Loom => LoomSession.PerRunspace.For(Runspace);
+
+  public object? Style(string context, string name)
+    => StyleStore.PerRunspace.For(Runspace).Resolve(context, name)?.Value;
 
   public Runspace Runspace { get; }
 

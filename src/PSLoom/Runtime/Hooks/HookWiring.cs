@@ -45,6 +45,17 @@ internal sealed class HookWiring(HookBus bus) {
   internal ScriptBlock? PromptWrapper { get; private set; }
 
   /// <summary>
+  ///   Gets the engine intrinsics of the runspace, once provided. The runspace's single source of truth for them.
+  /// </summary>
+  internal EngineIntrinsics? Engine {
+    get {
+      lock (_lock) {
+        return _engine;
+      }
+    }
+  }
+
+  /// <summary>
   ///   Provides the engine the wiring needs; the first call wins. Wires any kind that gained handlers before an engine was
   ///   available.
   /// </summary>
