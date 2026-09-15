@@ -15,6 +15,8 @@ namespace PSLoom.Cmdlets.Loom;
 /// <summary>
 ///   Runs a draft once per session: provides the first-party harnesses it threads (installing missing ones on a first run),
 ///   validates verb scopes, executes it with the loom vocabulary, reports every verb failure, then raises <c>SessionStarting</c>.
+///   With <c>-Reweave</c>, re-applies an edited draft: unchanged verbs are skipped, changed ones re-run, removed ones are undone
+///   when possible. Statements that are not verbs always run again.
 /// </summary>
 [Cmdlet(VerbsLifecycle.Invoke, "Loom")]
 public sealed class InvokeLoomCmdlet : PSCmdlet {
@@ -30,6 +32,12 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
   [Parameter]
   public SwitchParameter Validate { get; set; }
 
+  /// <summary>
+  ///   Gets or sets a value indicating whether to re-apply the draft in a session that already ran one.
+  /// </summary>
+  [Parameter]
+  public SwitchParameter Reweave { get; set; }
+
   /// <inheritdoc />
   protected override void ProcessRecord() {
     try {
@@ -38,13 +46,16 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
       var session = LoomSession.PerRunspace.ForCurrent();
       session.AttachEngine(this.GetEngine());
 
-      if (session.IsWoven &&
-          !Validate) {
-        WriteVerbose("The loom is already woven in this session; Invoke-Loom runs a draft once per session.");
+      var wasWoven = session.IsWoven;
+
+      if (wasWoven &&
+          !Validate &&
+          !Reweave) {
+        WriteVerbose("The loom is already woven in this session; Invoke-Loom runs a draft once per session. Use -Reweave to re-apply it.");
         return;
       }
 
-      var run = new LoomRun(true);
+      var run = new LoomRun(true, wasWoven && Reweave ? session.Ledger : null);
       var draftAst = (ScriptBlockAst)Draft.Ast;
       var problems = Prepare(session, run, draftAst);
 
@@ -62,6 +73,11 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
       }
 
       Execute(session, run);
+
+      if (run.IsReweave) {
+        UndoRemoved(run);
+      }
+
       run.AddTiming(new LoomTiming(LoomPhase.Total, nameof(LoomPhase.Total), null, null, 0, Stopwatch.GetElapsedTime(run.StartedAt),
         Stopwatch.GetElapsedTime(run.StartedAt)));
       session.MarkWoven(run);
@@ -70,7 +86,9 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
         WriteError(error);
       }
 
-      HookBus.PerRunspace.For(session.Runspace).RaiseSessionStarting();
+      if (!wasWoven) {
+        HookBus.PerRunspace.For(session.Runspace).RaiseSessionStarting();
+      }
     }
     catch (PowerShellException exception) {
       WriteError(exception.ToErrorRecord());
@@ -125,6 +143,31 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
       run.PopFrame();
       run.Active.Clear();
       session.PopRun(run);
+    }
+  }
+
+  private void UndoRemoved(LoomRun run) {
+    var requiresRestart = new List<string>();
+
+    foreach (var removed in run.Removed()) {
+      if (!removed.Verb.IsRevertible) {
+        requiresRestart.Add(ReweaveFingerprint.Describe(removed));
+        continue;
+      }
+
+      try {
+        var verb = (IRevertibleVerb)Activator.CreateInstance(removed.Verb.VerbType)!;
+        verb.Revert(removed.Entry);
+        WriteVerbose($"Undid removed statement: {ReweaveFingerprint.Describe(removed)}.");
+      }
+      catch (Exception exception) when (exception is not (OutOfMemoryException or StackOverflowException)) {
+        run.Report(LoomException.ReweaveRevertFailed(removed.Entry.VerbName, exception).ToErrorRecord());
+      }
+    }
+
+    if (requiresRestart.Count > 0) {
+      requiresRestart.Reverse();
+      WriteWarning(LoomException.ReweaveRequiresRestart(requiresRestart));
     }
   }
 

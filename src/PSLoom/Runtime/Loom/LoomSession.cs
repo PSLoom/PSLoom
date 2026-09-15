@@ -13,7 +13,8 @@ using PSLoom.Warp.Kernel;
 namespace PSLoom.Runtime.Loom;
 
 /// <summary>
-///   The loom state of one runspace: verbs, harnesses, the runs executing now, and the last completed draft.
+///   The loom state of one runspace: verbs, harnesses, the runs executing now, and the last completed draft with its reweave
+///   ledger.
 /// </summary>
 internal sealed class LoomSession {
   internal const string KERNEL_OWNER = "PSLoom";
@@ -79,6 +80,11 @@ internal sealed class LoomSession {
   public IReadOnlyList<LoomTiming>? LastRun { get; private set; }
 
   /// <summary>
+  ///   Gets the error-free top-level invocations of the last completed draft.
+  /// </summary>
+  public IReadOnlyList<LedgerItem> Ledger { get; private set; } = [];
+
+  /// <summary>
   ///   Gets the innermost run executing now.
   /// </summary>
   public LoomRun? CurrentRun => _runs.TryPeek(out var run) ? run : null;
@@ -107,10 +113,12 @@ internal sealed class LoomSession {
   public void MarkWoven(LoomRun run) {
     IsWoven = true;
     LastRun = run.Timings;
+    Ledger = run.Ledger;
   }
 
   /// <summary>
-  ///   Starts a verb invocation inside the innermost run, checking that the verb is valid in the current scope.
+  ///   Starts a verb invocation inside the innermost run, checking that the verb is valid in the current scope. A top-level draft
+  ///   invocation gets a ledger entry, and is skipped when a reweave finds it unchanged.
   /// </summary>
   public IVerbInvocation BeginVerb(LoomVerb verb) {
     ArgumentNullException.ThrowIfNull(verb);
@@ -122,13 +130,34 @@ internal sealed class LoomSession {
       throw WarpException.VerbOutsideLoom(descriptor?.Name ?? verb.GetType().Name);
     }
 
-    var line = (verb.GetVariableValue("MyInvocation") as InvocationInfo)?.ScriptLineNumber;
-    var inScope = descriptor.IsValidIn(run.CurrentScope);
+    var invocation = verb.GetVariableValue("MyInvocation") as InvocationInfo;
+    var line = invocation?.ScriptLineNumber;
 
-    if (!inScope) {
+    if (!descriptor.IsValidIn(run.CurrentScope)) {
       run.Report(LoomException.VerbOutOfScope(descriptor.Name, run.CurrentScope, descriptor.Scopes, line).ToErrorRecord());
+      return new VerbInvocation(this, run, descriptor, false, line);
     }
 
-    return new VerbInvocation(this, run, descriptor, inScope, line);
+    if (!run.IsDraft ||
+        run.Active.Count > 0) {
+      return new VerbInvocation(this, run, descriptor, true, line);
+    }
+
+    var bound = BoundParameters(verb);
+    var fingerprint = ReweaveFingerprint.Compute(bound);
+    var key = run.DisambiguateKey(ReweaveFingerprint.Key(descriptor.Name, descriptor.ReweaveKeys, bound, fingerprint));
+    var entry = new ReweaveEntry(descriptor.Name, key, fingerprint, bound);
+
+    return new VerbInvocation(this, run, descriptor, !run.IsUnchanged(key, fingerprint), line, entry);
+  }
+
+  private static Dictionary<string, object?> BoundParameters(LoomVerb verb) {
+    var bound = new Dictionary<string, object?>(StringComparer.OrdinalIgnoreCase);
+
+    foreach (var (name, value) in verb.MyInvocation.BoundParameters) {
+      bound[name] = value;
+    }
+
+    return bound;
   }
 }

@@ -17,6 +17,13 @@ internal sealed class VerbDescriptor {
     Scopes = [.. attribute.Scopes];
     Reweave = attribute.Reweave;
     Parameters = parameters;
+    ReweaveKeys = [
+      .. verbType.GetProperties(BindingFlags.Instance | BindingFlags.Public)
+        .Where(property => property.GetCustomAttribute<ReweaveKeyAttribute>(true) is not null)
+        .OrderBy(property => property.Name, StringComparer.Ordinal)
+        .Select(property => property.Name)
+    ];
+    IsRevertible = typeof(IRevertibleVerb).IsAssignableFrom(verbType);
     ShimId = VerbShims.Register(verbType, attribute.Name);
     Shim = ScriptBlock.Create($"& ([PSLoom.Runtime.Verbs.VerbShims]::Get({ShimId})) @args");
   }
@@ -32,6 +39,16 @@ internal sealed class VerbDescriptor {
   public ReweaveBehavior Reweave { get; }
 
   public IReadOnlyList<VerbParameter> Parameters { get; }
+
+  /// <summary>
+  ///   Gets the names of the <c>[ReweaveKey]</c> parameters, in a stable order.
+  /// </summary>
+  public IReadOnlyList<string> ReweaveKeys { get; }
+
+  /// <summary>
+  ///   Gets a value indicating whether the verb implements <see cref="IRevertibleVerb" />.
+  /// </summary>
+  public bool IsRevertible { get; }
 
   public int ShimId { get; }
 
