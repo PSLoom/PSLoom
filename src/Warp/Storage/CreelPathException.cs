@@ -36,6 +36,6 @@ public sealed class CreelPathException : PowerShellException {
       CreelPathViolation.Rooted => $"'{relativePath}' is rooted; only paths relative to '{root}' are accepted.",
       CreelPathViolation.InvalidCharacters => $"'{relativePath}' contains characters that are not allowed in a path.",
       CreelPathViolation.LinkEscape => $"'{relativePath}' crosses a link that points outside '{root}'.",
-      _ => $"'{relativePath}' resolves outside '{root}'."
+      var _ => $"'{relativePath}' resolves outside '{root}'."
     };
 }

@@ -54,7 +54,7 @@ public static class RepositoryLayout {
   /// <returns>The top-level hashtable.</returns>
   /// <exception cref="InvalidOperationException">Thrown when the file does not parse to a single hashtable literal.</exception>
   public static Hashtable ReadDataFile(string path) {
-    var ast = Parser.ParseFile(path, out _, out var errors);
+    var ast = Parser.ParseFile(path, out var _, out var errors);
 
     if (errors.Length > 0) {
       throw new InvalidOperationException($"'{path}' has parse errors: {errors[0].Message}");
