@@ -56,7 +56,6 @@ public sealed class RingBufferTests {
   }
 
   [Fact]
-  public void Constructor_NonPositiveCapacity_Throws() {
-    Should.Throw<ArgumentOutOfRangeException>(() => new RingBuffer<string>(0));
-  }
+  public void Constructor_NonPositiveCapacity_Throws()
+    => Should.Throw<ArgumentOutOfRangeException>(() => new RingBuffer<string>(0));
 }

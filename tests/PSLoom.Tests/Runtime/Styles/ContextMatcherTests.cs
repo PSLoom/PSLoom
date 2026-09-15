@@ -20,9 +20,8 @@ public sealed class ContextMatcherTests {
   [InlineData("git:w?rk", "git:work", true)]
   [InlineData("git:[wh]ork", "git:hork", true)]
   [InlineData("*", "anything", true)]
-  public void IsMatch_FollowsCaseSensitiveWildcardSemantics(string pattern, string value, bool expected) {
-    ContextMatcher.Compile(pattern).IsMatch(value).ShouldBe(expected);
-  }
+  public void IsMatch_FollowsCaseSensitiveWildcardSemantics(string pattern, string value, bool expected)
+    => ContextMatcher.Compile(pattern).IsMatch(value).ShouldBe(expected);
 
   [Theory]
   [InlineData("git:work:repo", 13)]
@@ -30,9 +29,8 @@ public sealed class ContextMatcherTests {
   [InlineData("git:*", 4)]
   [InlineData("git:w?rk", 5)]
   [InlineData("*", 0)]
-  public void LiteralPrefixLength_IsIndexOfFirstWildcard(string pattern, int expected) {
-    ContextMatcher.Compile(pattern).LiteralPrefixLength.ShouldBe(expected);
-  }
+  public void LiteralPrefixLength_IsIndexOfFirstWildcard(string pattern, int expected)
+    => ContextMatcher.Compile(pattern).LiteralPrefixLength.ShouldBe(expected);
 
   [Fact]
   public void EscapedMetacharacter_UsesWildcardSemantics() {

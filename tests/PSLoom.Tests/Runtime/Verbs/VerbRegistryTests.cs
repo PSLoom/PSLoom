@@ -51,9 +51,8 @@ public sealed class VerbRegistryTests {
   [InlineData(typeof(UnmarkedVerb), LoomException.VERB_ATTRIBUTE_MISSING)]
   [InlineData(typeof(BadNameVerb), LoomException.VERB_NAME_INVALID)]
   [InlineData(typeof(NoScopeVerb), LoomException.VERB_NO_SCOPE)]
-  public void Add_InvalidVerb_IsRejected(Type verbType, string errorId) {
-    Should.Throw<LoomException>(() => new VerbRegistry().Add(verbType, "Tests")).ErrorId.ShouldBe(errorId);
-  }
+  public void Add_InvalidVerb_IsRejected(Type verbType, string errorId)
+    => Should.Throw<LoomException>(() => new VerbRegistry().Add(verbType, "Tests")).ErrorId.ShouldBe(errorId);
 
   [Fact]
   public void RemoveOwner_RemovesItsVerbsAndInvalidatesTables() {

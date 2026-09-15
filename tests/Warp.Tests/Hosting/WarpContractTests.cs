@@ -9,14 +9,11 @@ namespace PSLoom.Warp.Tests.Hosting;
 [TestSubject(typeof(WarpContract))]
 public sealed class WarpContractTests {
   [Fact]
-  public void CompiledVersionIsReadFromTheAssemblyReference() {
-    WarpContract.GetCompiledVersion(typeof(WarpContractTests).Assembly).ShouldBe(WarpContract.Version);
-  }
+  public void CompiledVersionIsReadFromTheAssemblyReference()
+    => WarpContract.GetCompiledVersion(typeof(WarpContractTests).Assembly).ShouldBe(WarpContract.Version);
 
   [Fact]
-  public void AssemblyWithoutWarpReferenceHasNoCompiledVersion() {
-    WarpContract.GetCompiledVersion(typeof(object).Assembly).ShouldBeNull();
-  }
+  public void AssemblyWithoutWarpReferenceHasNoCompiledVersion() => WarpContract.GetCompiledVersion(typeof(object).Assembly).ShouldBeNull();
 
   [Theory]
   [InlineData(1, 0, true)]
@@ -30,7 +27,6 @@ public sealed class WarpContractTests {
   }
 
   [Fact]
-  public void MissingReferenceIsIncompatible() {
-    WarpContract.IsCompatible(null).ShouldBeFalse();
-  }
+  public void MissingReferenceIsIncompatible()
+    => WarpContract.IsCompatible(null).ShouldBeFalse();
 }

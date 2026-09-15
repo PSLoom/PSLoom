@@ -1,6 +1,8 @@
 // Copyright (c) Bruno Sales <me@baliestri.dev>. Licensed under the MIT License.
 // See the LICENSE file in the repository root for full license text.
 
+using System.Management.Automation;
+using System.Management.Automation.Runspaces;
 using JetBrains.Annotations;
 using PSLoom.Runtime.Hooks;
 using PSLoom.TestKit;
@@ -40,9 +42,7 @@ public sealed class ModuleInitializerTests {
   }
 
   [Fact]
-  public void OnRemove_WithoutPriorOnImport_DoesNotThrow() {
-    Should.NotThrow(() => new ModuleInitializer().OnRemove(null!));
-  }
+  public void OnRemove_WithoutPriorOnImport_DoesNotThrow() => Should.NotThrow(() => new ModuleInitializer().OnRemove(null!));
 
   [Fact]
   public void OnEngineExiting_DispatchesSessionExitingHandlersOfCapturedRunspace() {
@@ -71,7 +71,7 @@ public sealed class ModuleInitializerTests {
       initializer.OnImport();
     }
 
-    var action = System.Management.Automation.ScriptBlock.Create("$global:exitRan = $true");
+    var action = ScriptBlock.Create("$global:exitRan = $true");
     HookBus.PerRunspace.For(runspace).Add(HookKind.SessionExiting, HookBus.ForScript(action), action, null);
 
     shell.Run("New-Event -SourceIdentifier ([System.Management.Automation.PSEngineEvent]::Exiting) | Out-Null");
@@ -88,19 +88,17 @@ public sealed class ModuleInitializerTests {
       initializer.OnImport();
     }
 
-    var action = System.Management.Automation.ScriptBlock.Create("$global:exitRan = $true");
+    var action = ScriptBlock.Create("$global:exitRan = $true");
     HookBus.PerRunspace.For(runspace).Add(HookKind.SessionExiting, HookBus.ForScript(action), action, null);
 
     using (PowerShellHost.UseAsDefault(null)) {
       Should.NotThrow(() => initializer.OnEngineExiting(null, null!));
-      System.Management.Automation.Runspaces.Runspace.DefaultRunspace.ShouldBeNull();
+      Runspace.DefaultRunspace.ShouldBeNull();
     }
 
     runspace.SessionStateProxy.GetVariable("exitRan").ShouldBe(true);
   }
 
   [Fact]
-  public void OnEngineExiting_WithoutPriorOnImport_DoesNotThrow() {
-    Should.NotThrow(() => new ModuleInitializer().OnEngineExiting(null, null!));
-  }
+  public void OnEngineExiting_WithoutPriorOnImport_DoesNotThrow() => Should.NotThrow(() => new ModuleInitializer().OnEngineExiting(null, null!));
 }

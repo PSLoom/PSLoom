@@ -13,9 +13,8 @@ public sealed class DslScopeRulesTests {
   [InlineData(typeof(AbstractScope))]
   [InlineData(typeof(DraftScope))]
   [InlineData(typeof(SealedPrivateScope))]
-  public void TokenOnlyScopesAreAccepted(Type scope) {
-    Should.NotThrow(() => DslScopeRules.EnsureValid(scope, typeof(DslScopeRulesTests)));
-  }
+  public void TokenOnlyScopesAreAccepted(Type scope)
+    => Should.NotThrow(() => DslScopeRules.EnsureValid(scope, typeof(DslScopeRulesTests)));
 
   [Theory]
   [InlineData(typeof(SealedPublicScope))]
@@ -48,9 +47,7 @@ public sealed class DslScopeRulesTests {
   }
 
   [Fact]
-  public void ValidVerbPasses() {
-    Should.NotThrow(() => DslScopeRules.EnsureValidScopes(typeof(ValidVerb)));
-  }
+  public void ValidVerbPasses() => Should.NotThrow(() => DslScopeRules.EnsureValidScopes(typeof(ValidVerb)));
 
   [Fact]
   public void VerbAttributeScopesAreValidated() {
@@ -74,9 +71,7 @@ public sealed class DslScopeRulesTests {
 
   private class OpenScope : DslScope;
 
-  private sealed class SealedInternalScope : DslScope {
-    internal SealedInternalScope() { }
-  }
+  private sealed class SealedInternalScope : DslScope { }
 
   private abstract class GenericScope<T> : DslScope;
 

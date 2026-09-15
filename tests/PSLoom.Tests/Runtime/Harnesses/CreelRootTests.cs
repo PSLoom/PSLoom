@@ -3,6 +3,7 @@
 
 using JetBrains.Annotations;
 using PSLoom.Runtime.Harnesses;
+using PSLoom.Warp.Storage;
 
 namespace PSLoom.Tests.Runtime.Harnesses;
 
@@ -19,9 +20,8 @@ public sealed class CreelRootTests {
   }
 
   [Fact]
-  public void Windows_UsesLocalAppData() {
-    CreelRoot.Resolve(Environment(("LOCALAPPDATA", _base)), true).ShouldBe(Path.Combine(_base, "Loom"));
-  }
+  public void Windows_UsesLocalAppData()
+    => CreelRoot.Resolve(Environment(("LOCALAPPDATA", _base)), true).ShouldBe(Path.Combine(_base, "Loom"));
 
   [Fact]
   public void Unix_UsesXdgDataHome_ThenHome() {
@@ -41,7 +41,7 @@ public sealed class CreelRootTests {
 
     storage.IsRoot.ShouldBeTrue();
     storage.FullPath.ShouldEndWith(Path.Combine(CreelRoot.HARNESSES_DIRECTORY, "Crates"));
-    Should.Throw<PSLoom.Warp.Storage.CreelPathException>(() => storage.Combine("../Other"));
+    Should.Throw<CreelPathException>(() => storage.Combine("../Other"));
   }
 
   private static Func<string, string?> Environment(params (string Name, string Value)[] variables)
