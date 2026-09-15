@@ -13,7 +13,6 @@ namespace PSLoom.Runtime.Hooks;
 /// <param name="bus">The bus whose kinds are wired.</param>
 internal sealed class HookWiring(HookBus bus) {
   internal const string LINE_ACCEPTED_PARAMETER = "LineAcceptedHandler";
-  internal const string ORIGINAL_PROMPT_VARIABLE = "__psloomOriginalPrompt";
 
   private const string PROMPT_WRAPPER_SCRIPT =
     """
