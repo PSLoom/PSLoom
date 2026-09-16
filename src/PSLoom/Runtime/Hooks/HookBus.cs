@@ -101,13 +101,27 @@ internal sealed class HookBus : IHookBus {
   }
 
   /// <summary>
+  ///   Registers a kernel handler: dispatched like any other, never listed by <c>Get-Hook</c> nor removed by <c>Unregister-Hook</c>.
+  /// </summary>
+  internal HookRegistration AddInternal(HookKind kind, Func<HookInvocation, object?> invoke) {
+    EnsureKnown(kind);
+    ArgumentNullException.ThrowIfNull(invoke);
+
+    lock (_lock) {
+      var registration = new HookRegistration(kind, null, invoke, null, ++_sequence, true);
+      Volatile.Write(ref _snapshots[(int)kind], [.. _snapshots[(int)kind], registration]);
+      return registration;
+    }
+  }
+
+  /// <summary>
   ///   Removes a registration by identifier.
   /// </summary>
   internal bool Remove(Guid id) {
     lock (_lock) {
       for (var kind = 0; kind < _kindCount; kind++) {
         var current = _snapshots[kind];
-        var index = Array.FindIndex(current, registration => registration.Id == id);
+        var index = Array.FindIndex(current, registration => registration.Id == id && !registration.IsInternal);
 
         if (index < 0) {
           continue;
@@ -129,7 +143,8 @@ internal sealed class HookBus : IHookBus {
 
     lock (_lock) {
       var current = _snapshots[(int)kind];
-      var remaining = Array.FindAll(current, registration => !string.Equals(registration.Name, name, StringComparison.OrdinalIgnoreCase));
+      var remaining = Array.FindAll(current,
+        registration => !string.Equals(registration.Name, name, StringComparison.OrdinalIgnoreCase) || registration.IsInternal);
 
       if (remaining.Length == current.Length) {
         return false;
@@ -150,6 +165,7 @@ internal sealed class HookBus : IHookBus {
 
     return [
       .. registrations
+        .Where(registration => !registration.IsInternal)
         .Where(registration => name is null || string.Equals(registration.Name, name, StringComparison.OrdinalIgnoreCase))
         .OrderBy(registration => registration.Sequence)
     ];
@@ -271,7 +287,7 @@ internal sealed class HookBus : IHookBus {
   }
 
   private void DispatchCore(HookKind kind, HookRegistration[] registrations, HookInvocation invocation, CommandLookupEventArgs? lookup,
-    List<HookDiagnosticEntry>? failures = null) {
+  List<HookDiagnosticEntry>? failures = null) {
     if (!TryEnterDispatch(kind)) {
       return;
     }

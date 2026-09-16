@@ -9,7 +9,8 @@ namespace PSLoom.Runtime.Hooks;
 ///   A registered hook handler.
 /// </summary>
 public sealed class HookRegistration {
-  internal HookRegistration(HookKind kind, string? name, Func<HookInvocation, object?> invoke, ScriptBlock? action, long sequence) {
+  internal HookRegistration(HookKind kind, string? name, Func<HookInvocation, object?> invoke, ScriptBlock? action, long sequence,
+  bool isInternal = false) {
     Id = Guid.NewGuid();
     Kind = kind;
     Name = name;
@@ -17,6 +18,7 @@ public sealed class HookRegistration {
     Action = action;
     Sequence = sequence;
     RegisteredAt = DateTimeOffset.UtcNow;
+    IsInternal = isInternal;
   }
 
   /// <summary>
@@ -47,4 +49,9 @@ public sealed class HookRegistration {
   internal Func<HookInvocation, object?> Invoke { get; }
 
   internal long Sequence { get; }
+
+  /// <summary>
+  ///   Gets a value indicating whether the kernel registered this handler for itself; such handlers are not listed or removable.
+  /// </summary>
+  internal bool IsInternal { get; }
 }

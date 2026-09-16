@@ -2,8 +2,10 @@
 // See the LICENSE file in the repository root for full license text.
 
 using System.Diagnostics;
+using PSLoom.Runtime.Hooks;
 using PSLoom.Runtime.Loom;
 using PSLoom.Warp.Dsl;
+using PSLoom.Warp.Hooks;
 
 namespace PSLoom.Runtime.Sheds;
 
@@ -13,12 +15,19 @@ namespace PSLoom.Runtime.Sheds;
 /// </summary>
 internal sealed class ShedStaging(LoomSession session) {
   private List<ShedEntry> _entries = [];
+  private bool _wired;
 
   /// <summary>Gets the entries waiting for a prompt, an idle tick or a rescue.</summary>
   public ShedQueue Queue { get; } = new();
 
   /// <summary>Gets or sets how the session decides it is interactive; tests replace it.</summary>
   internal Func<bool> IsInteractive { get; set; } = () => InteractiveHost.Detect(session.Engine);
+
+  /// <summary>Gets or sets the clock a firing measures its slice with; tests replace it.</summary>
+  internal Func<long> Timestamp { get; set; } = Stopwatch.GetTimestamp;
+
+  /// <summary>Gets the time a firing may spend; it always applies at least one entry.</summary>
+  internal TimeSpan Slice { get; } = TimeSpan.FromMilliseconds(15);
 
   /// <summary>Gets every statement the last woven draft staged, in draft order.</summary>
   public IReadOnlyList<ShedEntry> Entries => _entries;
@@ -74,6 +83,7 @@ internal sealed class ShedStaging(LoomSession session) {
     }
 
     if (IsInteractive()) {
+      EnsureWired();
       return;
     }
 
@@ -86,6 +96,96 @@ internal sealed class ShedStaging(LoomSession session) {
         cmdlet.WriteError(error);
       }
     }
+  }
+
+  internal void OnPrompt() {
+    try {
+      if (Queue.Count > 0) {
+        Queue.DrainSlice(entry => ShedApplier.Apply(session, entry), Timestamp, Slice);
+      }
+
+      WarnAboutFailures();
+    }
+    catch (Exception exception) when (exception is not (OutOfMemoryException or StackOverflowException)) {
+      // A prompt draw must never break; the applier already records per-entry failures.
+    }
+  }
+
+  internal void OnIdle() {
+    try {
+      if (Queue.Count > 0) {
+        Queue.DrainSlice(entry => ShedApplier.Apply(session, entry), Timestamp, Slice);
+      }
+    }
+    catch (Exception exception) when (exception is not (OutOfMemoryException or StackOverflowException)) {
+      // Idle ticks never break.
+    }
+  }
+
+  internal void OnCommandNotFound(CommandNotFoundInvocation invocation) {
+    try {
+      if (Queue.Count == 0) {
+        return;
+      }
+
+      // The kernel cannot know which entry provides which command, so everything left applies before looking again.
+      Queue.DrainAll(entry => ShedApplier.Apply(session, entry));
+
+      if (session.Engine?.InvokeCommand.GetCommand(invocation.CommandName, CommandTypes.All) is { } command) {
+        invocation.EventArgs.Command = command;
+        invocation.EventArgs.StopSearch = true;
+      }
+    }
+    catch (Exception exception) when (exception is not (OutOfMemoryException or StackOverflowException)) {
+      // Command lookup never breaks because of staging.
+    }
+  }
+
+  private void EnsureWired() {
+    if (_wired) {
+      return;
+    }
+
+    var bus = HookBus.PerRunspace.For(session.Runspace);
+    bus.AddInternal(HookKind.PrePrompt, _ => {
+      OnPrompt();
+      return null;
+    });
+    bus.AddInternal(HookKind.Idle, _ => {
+      OnIdle();
+      return null;
+    });
+    bus.AddInternal(HookKind.CommandNotFound, invocation => {
+      OnCommandNotFound((CommandNotFoundInvocation)invocation);
+      return null;
+    });
+
+    bus.Wiring.EnsureWired(HookKind.PrePrompt);
+    bus.Wiring.EnsureWired(HookKind.Idle);
+    bus.Wiring.EnsureWired(HookKind.CommandNotFound);
+    _wired = true;
+  }
+
+  private void WarnAboutFailures() {
+    var failed = _entries.Where(entry => entry is { State: ShedState.Failed, Warned: false }).ToArray();
+
+    foreach (var entry in failed) {
+      entry.Warned = true;
+    }
+
+    var reported = failed.Where(entry => !entry.Declaration.Silent).ToArray();
+
+    if (reported.Length == 0 ||
+        session.Engine is not { } engine) {
+      return;
+    }
+
+    var noun = reported.Length == 1 ? "staged statement" : "staged statements";
+    var list = string.Join("; ", reported.Select(entry => $"line {entry.Line}: {entry.Statement}"));
+
+    // Write-Warning reaches the prompt pipeline's warning stream: the console shows it, and hosted runspaces capture it.
+    engine.InvokeCommand.InvokeScript("param($Message) Write-Warning $Message",
+      $"PSLoom: {reported.Length} {noun} failed ({list}). Run Get-Shed -State Failed.");
   }
 
   private static ShedEntry CreateEntry(LoomRun run, ShedDeclaration declaration, string? file) {
