@@ -4,6 +4,7 @@
 using PSLoom.Runtime.Hooks;
 using PSLoom.Runtime.Loom;
 using PSLoom.Runtime.Styles;
+using PSLoom.Runtime.Treadles;
 using PSLoom.Runtime.Verbs;
 using PSLoom.Warp.Diagnostics;
 using PSLoom.Warp.Dsl;
@@ -35,7 +36,7 @@ internal sealed class HarnessServices : IHarnessBuilder, IHarnessContext {
     Diagnostics = DiagnosticsFactory.Instance;
     PSReadLine = new SessionPSReadLineProbe(session);
     Harnesses = new HarnessDirectoryView(session.Directory, name);
-    Treadles = EmptyTreadleCatalog.Instance;
+    Treadles = TreadleCatalog.PerRunspace.For(session.Runspace);
     Dsl = new DslRunner(session);
     _storage = new Lazy<IHarnessStorage>(() => new HarnessStorage(CreelRoot.ForHarness(name)));
   }

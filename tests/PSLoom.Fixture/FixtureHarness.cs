@@ -22,6 +22,9 @@ public sealed class FixtureHarness : IHarness {
     builder.Styles.Set("fixture:identity", "storage", builder.Storage.Root.FullPath);
 
     var styles = builder.Styles;
+    builder.Treadles.Changed += (_, change)
+      => styles.Set("fixture:treadles", "last", change.Current is null ? $"<removed {change.Name}>" : change.Name);
+
     builder.Hooks.Subscribe(HookKind.SessionStarting, _ => {
       styles.TryGet<int>("fixture:events", "session-starting", out var count);
       styles.Set("fixture:events", "session-starting", count + 1);

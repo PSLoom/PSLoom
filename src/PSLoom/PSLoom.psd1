@@ -18,7 +18,8 @@
     'Invoke-Loom', 'Measure-Loom', 'Update-Harness',
     'Register-Hook', 'Unregister-Hook', 'Get-Hook', 'Trace-Hook',
     'Set-Style', 'Get-Style', 'Test-Style', 'Remove-Style', 'Get-StyleDefinition',
-    'Register-StyleWatcher', 'Unregister-StyleWatcher', 'Trace-Style'
+    'Register-StyleWatcher', 'Unregister-StyleWatcher', 'Trace-Style',
+    'New-Treadle', 'Get-Treadle', 'Remove-Treadle'
   )
 
   PrivateData = @{
