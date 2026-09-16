@@ -22,6 +22,12 @@ public enum LoomPhase {
   /// <summary>One verb invocation.</summary>
   Verb,
 
+  /// <summary>Recording the statements a draft staged with <c>Shed</c>.</summary>
+  Capture,
+
+  /// <summary>A staged statement applied after the draft.</summary>
+  Deferred,
+
   /// <summary>The whole run.</summary>
   Total
 }

@@ -6,6 +6,7 @@ using System.Management.Automation.Language;
 using PSLoom.Runtime.Harnesses;
 using PSLoom.Runtime.Hooks;
 using PSLoom.Runtime.Loom;
+using PSLoom.Runtime.Sheds;
 using PSLoom.Runtime.Verbs;
 using PSLoom.Warp;
 using PSLoom.Warp.Dsl;
@@ -20,6 +21,8 @@ namespace PSLoom.Cmdlets.Loom;
 /// </summary>
 [Cmdlet(VerbsLifecycle.Invoke, "Loom")]
 public sealed class InvokeLoomCmdlet : PSCmdlet {
+  private IReadOnlyList<ShedDeclaration> _declarations = [];
+
   /// <summary>
   ///   Gets or sets the draft.
   /// </summary>
@@ -72,7 +75,7 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
         return;
       }
 
-      Execute(session, run);
+      Execute(session, run, session.Sheds.Begin(run, Draft, _declarations));
 
       if (run.IsReweave) {
         UndoRemoved(run);
@@ -121,17 +124,22 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
 
     started = Stopwatch.GetTimestamp();
     problems.AddRange(DraftValidator.Validate(draftAst, session.Verbs).Select(error => error.ToErrorRecord()));
+
+    var (declarations, shedErrors) = ShedAnalyzer.Analyze(draftAst, session.Verbs);
+    problems.AddRange(shedErrors.Select(error => error.ToErrorRecord()));
+    _declarations = declarations;
+
     AddPhase(run, LoomPhase.Validate, nameof(LoomPhase.Validate), started);
 
     return problems;
   }
 
-  private void Execute(LoomSession session, LoomRun run) {
+  private void Execute(LoomSession session, LoomRun run, ScriptBlock draft) {
     session.PushRun(run);
     run.PushFrame(new DraftFrame(), typeof(DraftScope));
 
     try {
-      foreach (var output in Draft.InvokeWithContext(session.Verbs.TableFor(typeof(DraftScope)), [])) {
+      foreach (var output in draft.InvokeWithContext(session.Verbs.TableFor(typeof(DraftScope)), [])) {
         WriteObject(output);
       }
     }

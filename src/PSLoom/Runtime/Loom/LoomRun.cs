@@ -2,6 +2,7 @@
 // See the LICENSE file in the repository root for full license text.
 
 using System.Diagnostics;
+using PSLoom.Runtime.Sheds;
 
 namespace PSLoom.Runtime.Loom;
 
@@ -40,6 +41,11 @@ internal sealed class LoomRun(bool isDraft, IReadOnlyList<LedgerItem>? previousL
   ///   Gets the verbs currently executing, innermost on top.
   /// </summary>
   public Stack<VerbInvocation> Active { get; } = new();
+
+  /// <summary>
+  ///   Gets or sets the entries of the statements this draft staged, indexed as the rewritten draft refers to them.
+  /// </summary>
+  internal IReadOnlyList<ShedEntry> Sheds { get; set; } = [];
 
   /// <summary>
   ///   Gets the scope of the innermost frame.

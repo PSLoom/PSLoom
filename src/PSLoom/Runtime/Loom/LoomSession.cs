@@ -4,6 +4,7 @@
 using System.Management.Automation.Runspaces;
 using PSLoom.Runtime.Harnesses;
 using PSLoom.Runtime.Hooks;
+using PSLoom.Runtime.Sheds;
 using PSLoom.Runtime.Verbs;
 using PSLoom.Verbs;
 using PSLoom.Warp;
@@ -31,6 +32,7 @@ internal sealed class LoomSession {
     Verbs.Add(typeof(TreadleVerb), KERNEL_OWNER);
     Directory = new HarnessDirectory();
     Harnesses = new HarnessRegistry(this);
+    Sheds = new ShedStaging();
   }
 
   /// <summary>
@@ -45,6 +47,11 @@ internal sealed class LoomSession {
   public HarnessRegistry Harnesses { get; }
 
   public HarnessDirectory Directory { get; }
+
+  /// <summary>
+  ///   Gets the statements staged with <c>Shed</c> and their queue.
+  /// </summary>
+  public ShedStaging Sheds { get; }
 
   /// <summary>
   ///   Gets the harness names <c>Thread</c> accepts. Starts as the first-party set; tests extend it.
