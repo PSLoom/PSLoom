@@ -50,17 +50,12 @@ internal sealed class StyleStore : IStyleStore {
     => RemoveCore(context, name).ToResult();
 
   /// <inheritdoc />
-  public IDisposable Watch(string context, string name, StyleWatcher watcher, bool replay = false) {
-    var (registration, replayOutcome) = AddWatcher(context, name, false, watcher, null, replay);
-
-    return replayOutcome?.Exception is null
-      ? new WatcherHandle(this, registration.Id)
-      : throw StyleException.WatcherFailed(replayOutcome);
-  }
+  public IDisposable Watch(string context, string name, StyleWatcher watcher, bool replay = false)
+    => Handle(AddWatcher(context, name, false, watcher, null, replay));
 
   /// <inheritdoc />
-  public IDisposable WatchPattern(string contextPattern, string name, StyleWatcher watcher)
-    => new WatcherHandle(this, AddWatcher(contextPattern, name, true, watcher, null, false).Registration.Id);
+  public IDisposable WatchPattern(string contextPattern, string name, StyleWatcher watcher, bool replay = false)
+    => Handle(AddWatcher(contextPattern, name, true, watcher, null, replay));
 
   /// <summary>
   ///   Defines or redefines a value and runs the watchers it affects.
@@ -124,7 +119,8 @@ internal sealed class StyleStore : IStyleStore {
   /// <summary>
   ///   Registers a watcher, optionally replaying the current value.
   /// </summary>
-  internal (StyleWatcherRegistration Registration, StyleWatcherOutcome? Replay) AddWatcher(string context, string name, bool isPattern,
+  internal (StyleWatcherRegistration Registration, IReadOnlyList<StyleWatcherOutcome> Replays) AddWatcher(string context, string name,
+  bool isPattern,
   StyleWatcher callback, ScriptBlock? action, bool replay) {
     ValidateKey(context, name);
     ArgumentNullException.ThrowIfNull(callback);
@@ -137,14 +133,13 @@ internal sealed class StyleStore : IStyleStore {
       _watchersByName[name] = [.. WatchersFor(name), registration];
     }
 
-    if (!replay ||
-        isPattern ||
-        Resolve(context, name) is not { } resolved) {
-      return (registration, null);
+    if (!replay) {
+      return (registration, []);
     }
 
-    var outcome = RunFires([new PendingFire(registration, new StyleChange(context, name, null, resolved.Value))]);
-    return (registration, outcome[0]);
+    var fires = isPattern ? PatternReplay(registration) : ConcreteReplay(registration);
+
+    return (registration, fires.Length == 0 ? [] : RunFires(fires));
   }
 
   /// <summary>
@@ -255,6 +250,30 @@ internal sealed class StyleStore : IStyleStore {
 
     return [.. fires];
   }
+
+  /// <summary>
+  ///   A concrete watcher replays the value its context resolves to now, if any.
+  /// </summary>
+  private PendingFire[] ConcreteReplay(StyleWatcherRegistration registration)
+    => Resolve(registration.Context, registration.Name) is { } resolved
+      ? [new PendingFire(registration, new StyleChange(registration.Context, registration.Name, null, resolved.Value))]
+      : [];
+
+  /// <summary>
+  ///   A pattern watcher replays once per stored definition its pattern matches, in definition order — the writes it would have
+  ///   seen had it been registered first. A harness toggled by styles initializes from what the profile already set.
+  /// </summary>
+  private PendingFire[] PatternReplay(StyleWatcherRegistration registration)
+    => [
+      .. GetDefinitions(null, registration.Name)
+        .Where(definition => registration.PatternMatcher!.IsMatch(definition.Context))
+        .Select(definition => new PendingFire(registration, new StyleChange(definition.Context, registration.Name, null, definition.Value)))
+    ];
+
+  private IDisposable Handle((StyleWatcherRegistration Registration, IReadOnlyList<StyleWatcherOutcome> Replays) added)
+    => added.Replays.FirstOrDefault(outcome => outcome.Exception is not null) is { } failed
+      ? throw StyleException.WatcherFailed(failed)
+      : new WatcherHandle(this, added.Registration.Id);
 
   private StyleWatcherRegistration[] WatchersFor(string name)
     => _watchersByName.TryGetValue(name, out var watchers) ? watchers : [];

@@ -145,7 +145,7 @@ PSLoom.Warp.Styles.IStyleStore.Resolve(string! context, string! name) -> PSLoom.
 PSLoom.Warp.Styles.IStyleStore.Set(string! context, string! name, object? value) -> PSLoom.Warp.Styles.StyleWriteResult!
 PSLoom.Warp.Styles.IStyleStore.TryGet<T>(string! context, string! name, out T value) -> bool
 PSLoom.Warp.Styles.IStyleStore.Watch(string! context, string! name, PSLoom.Warp.Styles.StyleWatcher! watcher, bool replay = false) -> System.IDisposable!
-PSLoom.Warp.Styles.IStyleStore.WatchPattern(string! contextPattern, string! name, PSLoom.Warp.Styles.StyleWatcher! watcher) -> System.IDisposable!
+PSLoom.Warp.Styles.IStyleStore.WatchPattern(string! contextPattern, string! name, PSLoom.Warp.Styles.StyleWatcher! watcher, bool replay = false) -> System.IDisposable!
 PSLoom.Warp.Styles.StyleChange
 PSLoom.Warp.Styles.StyleChange.Context.get -> string!
 PSLoom.Warp.Styles.StyleChange.Context.init -> void

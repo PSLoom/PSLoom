@@ -135,6 +135,20 @@ public sealed class StyleWatcherTests {
   }
 
   [Fact]
+  public void WatchPattern_WithReplay_DeliversEveryMatchingDefinitionInOrder() {
+    // Harvested: StyleWatcherDispatchTests.Replay_PatternWatcher_FiresOncePerCurrentlyMatchingDefinition.
+    var store = new StyleStore();
+    store.Set("colorway:b", "theme", "B");
+    store.Set("other:*", "theme", "X");
+    store.Set("colorway:a", "theme", "A");
+    var changes = new List<StyleChange>();
+
+    store.WatchPattern("colorway:*", "theme", changes.Add, true);
+
+    changes.Select(change => (change.Context, change.OldValue, change.NewValue)).ShouldBe([("colorway:b", null, "B"), ("colorway:a", null, "A")]);
+  }
+
+  [Fact]
   public void Watch_WithReplayAndNothingResolved_DoesNotFire() {
     var store = new StyleStore();
     var changes = new List<StyleChange>();

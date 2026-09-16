@@ -61,6 +61,17 @@ public sealed class StyleWatcherCmdletTests {
   }
 
   [Fact]
+  public void Replay_PatternWatcher_RunsOncePerMatchingDefinition() {
+    // Harvested: StyleWatcherDispatchTests.Replay_PatternWatcher_FiresOncePerCurrentlyMatchingDefinition.
+    using var session = new KernelSession();
+    session.Run("Set-Style 'colorway:a' 'theme' 'A'; Set-Style 'colorway:b' 'theme' 'B'; Set-Style 'other:c' 'theme' 'C'");
+
+    session.Run("$global:replays = @(); Register-StyleWatcher 'colorway:*' 'theme' { $global:replays += \"$($_.Context)=$($_.NewValue)\" } -Pattern -Replay | Out-Null");
+
+    session.Run("$global:replays").Select(result => result.BaseObject).ShouldBe(["colorway:a=A", "colorway:b=B"]);
+  }
+
+  [Fact]
   public void Replay_Failure_WritesErrorButStillRegisters() {
     using var session = new KernelSession();
     session.Run("Set-Style 'app:*' 'color' 'Cyan'");

@@ -72,6 +72,10 @@ public interface IStyleStore {
   /// <param name="contextPattern">The pattern the written context is matched against.</param>
   /// <param name="name">The style name.</param>
   /// <param name="watcher">The callback.</param>
+  /// <param name="replay">
+  ///   Deliver, immediately, one change per stored definition whose context matches the pattern, with a <see langword="null" /> old
+  ///   value — the writes the watcher would have seen had it been registered first.
+  /// </param>
   /// <returns>A handle that stops watching when disposed.</returns>
-  IDisposable WatchPattern(string contextPattern, string name, StyleWatcher watcher);
+  IDisposable WatchPattern(string contextPattern, string name, StyleWatcher watcher, bool replay = false);
 }

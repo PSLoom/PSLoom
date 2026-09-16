@@ -40,8 +40,8 @@ public sealed class RegisterStyleWatcherCmdlet : PSCmdlet {
   public SwitchParameter Pattern { get; set; }
 
   /// <summary>
-  ///   Gets or sets a value indicating whether to run the script immediately with the current value. Ignored with
-  ///   <see cref="Pattern" />.
+  ///   Gets or sets a value indicating whether to run the script immediately with the current value — with
+  ///   <see cref="Pattern" />, once per stored definition the pattern matches.
   /// </summary>
   [Parameter]
   public SwitchParameter Replay { get; set; }
@@ -50,11 +50,11 @@ public sealed class RegisterStyleWatcherCmdlet : PSCmdlet {
   protected override void ProcessRecord() {
     try {
       var action = Action;
-      var (registration, replay) = StyleStore.PerRunspace.ForCurrent().AddWatcher(Context, Name, Pattern.IsPresent,
+      var (registration, replays) = StyleStore.PerRunspace.ForCurrent().AddWatcher(Context, Name, Pattern.IsPresent,
         change => action.InvokeWithContext(null, [new PSVariable("_", change)], change), action, Replay.IsPresent);
 
-      if (replay is not null) {
-        StyleNarration.ReportWatchers(this, [replay]);
+      if (replays.Count > 0) {
+        StyleNarration.ReportWatchers(this, replays);
       }
 
       WriteObject(registration);
