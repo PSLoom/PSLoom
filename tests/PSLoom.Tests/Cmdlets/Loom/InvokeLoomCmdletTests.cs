@@ -3,6 +3,7 @@
 
 using JetBrains.Annotations;
 using PSLoom.Cmdlets.Loom;
+using PSLoom.Runtime.Hooks;
 using PSLoom.Runtime.Loom;
 using PSLoom.Runtime.Styles;
 using PSLoom.Tests.Utility;
@@ -181,6 +182,22 @@ public sealed class InvokeLoomCmdletTests {
     session.Run("Register-Hook PrePrompt { } | Out-Null; prompt | Out-Null; prompt | Out-Null");
 
     session.Style("fixture:events", "session-starting").ShouldBe(1);
+  }
+
+  [Fact]
+  public void SessionStarting_FailingHandler_IsWrittenAsANonTerminatingError() {
+    // Harvested: HookDispatcherTests.FireSessionStarting_ThrowingConsumer_WritesANonTerminatingError. The failure is also recorded
+    // for Trace-Hook; Invoke-Loom has an error stream, so a broken profile hook shows at startup.
+    using var session = new KernelSession();
+    session.Run("Register-Hook SessionStarting { throw 'session boom' } | Out-Null");
+    session.Run("Register-Hook SessionStarting { $global:secondStarted = $true } | Out-Null");
+
+    session.Run("Invoke-Loom { Style 'app:*' 'color' 'Cyan' }");
+
+    var error = session.Streams.Error.ShouldHaveSingleItem();
+    error.FullyQualifiedErrorId.ShouldStartWith(HookException.HANDLER_FAILED);
+    error.Exception.Message.ShouldContain("session boom");
+    session.Global("secondStarted").ShouldBe(true);
   }
 
   [Fact]

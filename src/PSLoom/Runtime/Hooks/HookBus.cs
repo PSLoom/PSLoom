@@ -224,13 +224,27 @@ internal sealed class HookBus : IHookBus {
   /// <summary>
   ///   Raises <see cref="HookKind.SessionStarting" /> the first time it is called for this runspace; later calls do nothing.
   /// </summary>
-  internal void RaiseSessionStarting() {
+  /// <returns>
+  ///   The handlers that failed, already recorded. A caller with an error stream — <c>Invoke-Loom</c> — writes them too, so a broken
+  ///   profile hook shows at startup instead of only in <c>Trace-Hook</c>.
+  /// </returns>
+  internal IReadOnlyList<HookDiagnosticEntry> RaiseSessionStarting() {
     if (Interlocked.Exchange(ref _sessionStarted, 1) != 0) {
-      return;
+      return [];
     }
 
     Wiring.EnsurePromptCurrent();
-    Dispatch(HookKind.SessionStarting);
+
+    var registrations = Volatile.Read(ref _snapshots[(int)HookKind.SessionStarting]);
+
+    if (registrations.Length == 0) {
+      return [];
+    }
+
+    var failures = new List<HookDiagnosticEntry>();
+    DispatchCore(HookKind.SessionStarting, registrations, new HookInvocation(HookKind.SessionStarting, Runspace), null, failures);
+
+    return failures;
   }
 
   private static void EnsureKnown(HookKind kind) {
@@ -256,7 +270,8 @@ internal sealed class HookBus : IHookBus {
     return true;
   }
 
-  private void DispatchCore(HookKind kind, HookRegistration[] registrations, HookInvocation invocation, CommandLookupEventArgs? lookup) {
+  private void DispatchCore(HookKind kind, HookRegistration[] registrations, HookInvocation invocation, CommandLookupEventArgs? lookup,
+    List<HookDiagnosticEntry>? failures = null) {
     if (!TryEnterDispatch(kind)) {
       return;
     }
@@ -272,7 +287,7 @@ internal sealed class HookBus : IHookBus {
 
     try {
       foreach (var registration in registrations) {
-        var result = InvokeOne(registration, invocation);
+        var result = InvokeOne(registration, invocation, failures);
 
         if (lookup is not null &&
             Resolves(lookup, result)) {
@@ -289,7 +304,7 @@ internal sealed class HookBus : IHookBus {
     }
   }
 
-  private object? InvokeOne(HookRegistration registration, HookInvocation invocation) {
+  private object? InvokeOne(HookRegistration registration, HookInvocation invocation, List<HookDiagnosticEntry>? failures) {
     var started = Stopwatch.GetTimestamp();
     Exception? failure = null;
 
@@ -302,7 +317,12 @@ internal sealed class HookBus : IHookBus {
     }
     finally {
       var elapsed = Stopwatch.GetElapsedTime(started);
-      Diagnostics.Record(new HookDiagnosticEntry(registration, elapsed, elapsed > SlowThreshold, failure));
+      var entry = new HookDiagnosticEntry(registration, elapsed, elapsed > SlowThreshold, failure);
+      Diagnostics.Record(entry);
+
+      if (failure is not null) {
+        failures?.Add(entry);
+      }
     }
   }
 

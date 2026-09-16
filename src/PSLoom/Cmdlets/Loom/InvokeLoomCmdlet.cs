@@ -87,7 +87,9 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
       }
 
       if (!wasWoven) {
-        HookBus.PerRunspace.For(session.Runspace).RaiseSessionStarting();
+        foreach (var failure in HookBus.PerRunspace.For(session.Runspace).RaiseSessionStarting()) {
+          WriteError(HookException.HandlerFailed(failure).ToErrorRecord());
+        }
       }
     }
     catch (PowerShellException exception) {
@@ -165,10 +167,12 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
       }
     }
 
-    if (requiresRestart.Count > 0) {
-      requiresRestart.Reverse();
-      WriteWarning(LoomException.ReweaveRequiresRestart(requiresRestart));
+    if (requiresRestart.Count <= 0) {
+      return;
     }
+
+    requiresRestart.Reverse();
+    WriteWarning(LoomException.ReweaveRequiresRestart(requiresRestart));
   }
 
   private static void AddPhase(LoomRun run, LoomPhase phase, string name, long started) {
