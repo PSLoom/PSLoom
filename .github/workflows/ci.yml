@@ -33,9 +33,42 @@ jobs:
       - name: Build
         run: dotnet build PSLoom.slnx --configuration Release --no-restore
 
+      # Includes the published-module integration tests, which start real pwsh processes against artifacts/modules.
       - name: Test
         run: dotnet test --solution PSLoom.slnx --configuration Release --no-build
 
-      - name: Startup budget
+      # Import < 50 ms and the typical draft < 150 ms, medians of cold processes (section 6 of the design).
+      - name: Startup budgets
         shell: pwsh
-        run: ./benchmarks/Measure-Startup.ps1
+        run: ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/typical.ps1
+
+  benchmarks:
+    # One OS only: shared runners are noisy and BenchmarkDotNet is slow; the budgets are orders of magnitude apart from noise.
+    name: benchmark budgets
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Run budgeted benchmarks
+        run: >-
+          dotnet run --configuration Release --project benchmarks/PSLoom.Benchmarks --
+          --filter '*StyleResolveBenchmarks*' '*HookDispatchBenchmarks*' '*CompletionBenchmarks*'
+          --exporters json
+
+      - name: Check budgets
+        shell: pwsh
+        run: ./benchmarks/Assert-Budgets.ps1
+
+      - name: Upload results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark-results
+          path: BenchmarkDotNet.Artifacts/results

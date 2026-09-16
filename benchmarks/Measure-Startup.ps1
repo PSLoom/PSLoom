@@ -18,7 +18,8 @@
   Optional script file containing an `Invoke-Loom -Draft { ... }` call to time after the import.
 
 .PARAMETER DraftBudgetMilliseconds
-  Budget for the median draft time over the import. Default 100.
+  Budget for the median draft time over the import. Default 150, measured against benchmarks/drafts/typical.ps1: a profile
+  threading Reed, where most of the cost is PowerShell's own first import and first cmdlet invocations.
 
 .PARAMETER Tolerance
   Multiplier applied to every budget to absorb machine noise. Default 1.2.
@@ -32,7 +33,7 @@ param(
   [ValidateRange(1, 1000)][int]$Iterations = 10,
   [double]$ImportBudgetMilliseconds = 50,
   [string]$DraftPath,
-  [double]$DraftBudgetMilliseconds = 100,
+  [double]$DraftBudgetMilliseconds = 150,
   [double]$Tolerance = 1.2,
   [string[]]$AllowHarness = @()
 )
