@@ -18,6 +18,15 @@ public static class ShedBridge {
   public static bool Admit(int index) {
     var (session, run, entry) = Resolve(index);
 
+    if (entry.Adopted) {
+      // Unchanged and already applied: keep its verbs in the new ledger, or the next reweave would revert them as removed.
+      foreach (var item in entry.AppliedItems) {
+        run.Record(item);
+      }
+
+      return false;
+    }
+
     if (!ShedConditions.Hold(session, entry, run)) {
       return false;
     }
@@ -63,6 +72,11 @@ public static class ShedBridge {
   /// </summary>
   public static void Capture(int index) {
     var (session, _, entry) = Resolve(index);
+
+    if (entry.Adopted) {
+      return; // still queued, or already applied: an unchanged staged statement is not captured twice
+    }
+
     session.Sheds.Capture(entry);
   }
 

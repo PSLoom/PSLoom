@@ -15,6 +15,7 @@ namespace PSLoom.Runtime.Sheds;
 /// </summary>
 internal sealed class ShedStaging(LoomSession session) {
   private List<ShedEntry> _entries = [];
+  private List<ShedEntry> _removed = [];
   private bool _wired;
 
   /// <summary>Gets the entries waiting for a prompt, an idle tick or a rescue.</summary>
@@ -46,6 +47,39 @@ internal sealed class ShedStaging(LoomSession session) {
     var started = Stopwatch.GetTimestamp();
     var entries = declarations.Select(declaration => CreateEntry(run, declaration, draft.File)).ToList();
 
+    var previous = run.IsReweave
+      ? _entries.ToDictionary(entry => entry.Key, StringComparer.Ordinal)
+      : new Dictionary<string, ShedEntry>(StringComparer.Ordinal);
+    _removed = [];
+
+    for (var index = 0; index < entries.Count; index++) {
+      if (!previous.Remove(entries[index].Key, out var old)) {
+        continue;
+      }
+
+      var unchanged = old.Fingerprint == entries[index].Fingerprint;
+
+      if (unchanged &&
+          old.State is ShedState.Pending or ShedState.Applied) {
+        old.Adopted = true;
+        entries[index] = old; // the rewritten draft's index now points at the kept entry
+        continue;
+      }
+
+      if (old.State == ShedState.Pending) {
+        Queue.Remove(old);
+      }
+    }
+
+    foreach (var old in previous.Values) {
+      if (old.State == ShedState.Pending) {
+        Queue.Remove(old);
+      }
+      else if (old is { State: ShedState.Applied, Timing: not ShedTiming.Now }) {
+        _removed.Add(old);
+      }
+    }
+
     run.Sheds = entries;
     _entries = entries;
 
@@ -72,6 +106,23 @@ internal sealed class ShedStaging(LoomSession session) {
   /// </summary>
   public void Complete(PSCmdlet cmdlet) {
     ArgumentNullException.ThrowIfNull(cmdlet);
+
+    // Deferred statements a reweave removed applied in runs of their own, so the draft's ledger never saw them: revert them here,
+    // unless the new draft applied the same invocation itself.
+    if (_removed.Count > 0 &&
+        session.CurrentRun is null) {
+      var reapplied = session.Ledger.Select(item => item.Entry.Key).ToHashSet(StringComparer.Ordinal);
+      var run = new LoomRun(false);
+
+      LedgerReverter.Revert(_removed.SelectMany(entry => entry.AppliedItems).Where(item => !reapplied.Contains(item.Entry.Key)).Reverse(), run,
+        cmdlet);
+
+      foreach (var error in run.Errors) {
+        cmdlet.WriteError(error);
+      }
+
+      _removed = [];
+    }
 
     // Apply-now statements that failed were already written as errors of Invoke-Loom; the prompt warning must not repeat them.
     foreach (var entry in _entries.Where(entry => entry.State == ShedState.Failed)) {

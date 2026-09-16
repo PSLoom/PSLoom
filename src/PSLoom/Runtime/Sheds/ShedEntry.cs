@@ -60,6 +60,9 @@ public sealed class ShedEntry {
   /// <summary>Gets a value indicating whether the prompt warning already mentioned this entry.</summary>
   internal bool Warned { get; set; }
 
+  /// <summary>Gets a value indicating whether a reweave kept this entry from the previous draft.</summary>
+  internal bool Adopted { get; set; }
+
   // Apply-now bookkeeping, set by Admit and read by Applied.
   internal int ErrorsAtAdmit { get; set; }
 

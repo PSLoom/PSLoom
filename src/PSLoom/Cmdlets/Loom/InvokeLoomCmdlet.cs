@@ -78,7 +78,7 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
       Execute(session, run, session.Sheds.Begin(run, Draft, _declarations));
 
       if (run.IsReweave) {
-        UndoRemoved(run);
+        LedgerReverter.Revert(run.Removed(), run, this);
       }
 
       run.AddTiming(new LoomTiming(LoomPhase.Total, nameof(LoomPhase.Total), null, null, 0, Stopwatch.GetElapsedTime(run.StartedAt),
@@ -158,33 +158,6 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
       run.Active.Clear();
       session.PopRun(run);
     }
-  }
-
-  private void UndoRemoved(LoomRun run) {
-    var requiresRestart = new List<string>();
-
-    foreach (var removed in run.Removed()) {
-      if (!removed.Verb.IsRevertible) {
-        requiresRestart.Add(ReweaveFingerprint.Describe(removed));
-        continue;
-      }
-
-      try {
-        var verb = (IRevertibleVerb)Activator.CreateInstance(removed.Verb.VerbType)!;
-        verb.Revert(removed.Entry);
-        WriteVerbose($"Undid removed statement: {ReweaveFingerprint.Describe(removed)}.");
-      }
-      catch (Exception exception) when (exception is not (OutOfMemoryException or StackOverflowException)) {
-        run.Report(LoomException.ReweaveRevertFailed(removed.Entry.VerbName, exception).ToErrorRecord());
-      }
-    }
-
-    if (requiresRestart.Count <= 0) {
-      return;
-    }
-
-    requiresRestart.Reverse();
-    WriteWarning(LoomException.ReweaveRequiresRestart(requiresRestart));
   }
 
   private static void AddPhase(LoomRun run, LoomPhase phase, string name, long started) {
