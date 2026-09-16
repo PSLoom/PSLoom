@@ -1,5 +1,5 @@
-# The "typical draft" the startup budget is defined against: Reed threaded, styles, treadles, the git completer applied in the draft
-# and the docker completer staged after the first prompt. Measure-Startup.ps1 dot-sources it after Import-Module PSLoom and times it.
+# The typical profile with nothing staged. Measure-Startup.ps1 reports it next to typical.ps1, without gating: the difference between
+# the two is what Shed buys.
 Invoke-Loom -Draft {
   Thread Reed
 
@@ -13,7 +13,6 @@ Invoke-Loom -Draft {
   Treadle glog { git log --oneline --graph --decorate }
   Treadle gst { git status --short }
   Treadle gco { git checkout }
-  Shed -Slot 0b
   Treadle ll { Get-ChildItem -Force }
 
   Sley git -Alias g -Description 'Distributed version control' {
@@ -50,12 +49,10 @@ Invoke-Loom -Draft {
     }
   }
 
-  Shed -Slot 1a
   Sley docker -Description 'Containers' {
     Command run { Option --detach -Alias '-d'; Option --name { Argument name }; Argument image }
     Command ps { Option --all -Alias '-a' }
   }
 
-  Shed -Wait -Lucid
   Set-Alias -Name k -Value kubectl -Scope Global
 }

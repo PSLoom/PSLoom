@@ -42,6 +42,11 @@ jobs:
         shell: pwsh
         run: ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/typical.ps1
 
+      # The same profile with nothing staged, reported next to the gated one: the difference is what Shed buys.
+      - name: Eager draft (report only)
+        shell: pwsh
+        run: ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/eager.ps1 -ReportOnly
+
   benchmarks:
     # One OS only: shared runners are noisy and BenchmarkDotNet is slow; the budgets are orders of magnitude apart from noise.
     name: benchmark budgets

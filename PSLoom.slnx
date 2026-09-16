@@ -5,6 +5,8 @@
   </Folder>
   <Folder Name="/Benchmarks/">
     <File Path="benchmarks/Assert-Budgets.ps1" />
+    <File Path="benchmarks/drafts/eager.ps1" />
+    <File Path="benchmarks/drafts/staged.ps1" />
     <File Path="benchmarks/drafts/typical.ps1" />
     <File Path="benchmarks/Measure-Startup.ps1" />
     <Project Path="benchmarks/PSLoom.Benchmarks/PSLoom.Benchmarks.csproj" />

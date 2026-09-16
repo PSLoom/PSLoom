@@ -27,6 +27,9 @@
 .PARAMETER AllowHarness
   Test-only harness names (for example Fixture) added to the session's first-party allowlist through reflection before
   the draft is timed, so steady-state drafts can be measured with a test harness. Not a product feature.
+
+.PARAMETER ReportOnly
+  Print the medians without failing when a budget is exceeded.
 #>
 [CmdletBinding()]
 param(
@@ -35,7 +38,8 @@ param(
   [string]$DraftPath,
   [double]$DraftBudgetMilliseconds = 150,
   [double]$Tolerance = 1.2,
-  [string[]]$AllowHarness = @()
+  [string[]]$AllowHarness = @(),
+  [switch]$ReportOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -45,6 +49,7 @@ $pwsh = (Get-Process -Id $PID).Path
 
 $probe = @'
 param($ModulesDirectory, $DraftPath, [string[]]$AllowHarness)
+$env:LOOM_INTERACTIVE = '1'   # measure the interactive startup window: staged statements apply after the first prompt, not here
 $env:PSModulePath = $ModulesDirectory + [IO.Path]::PathSeparator + $env:PSModulePath
 $import = [Diagnostics.Stopwatch]::StartNew()
 Import-Module PSLoom
@@ -101,7 +106,7 @@ foreach ($result in $results) {
 
 $results | Format-Table -AutoSize | Out-Host
 
-if ($failed) {
+if ($failed -and -not $ReportOnly) {
   Write-Error 'Startup budget exceeded.' -ErrorAction Continue
   exit 1
 }
