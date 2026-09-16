@@ -28,6 +28,7 @@ internal sealed class LoomSession {
     Verbs = new VerbRegistry();
     Verbs.Add(typeof(StyleVerb), KERNEL_OWNER);
     Verbs.Add(typeof(ThreadVerb), KERNEL_OWNER);
+    Verbs.Add(typeof(TreadleVerb), KERNEL_OWNER);
     Directory = new HarnessDirectory();
     Harnesses = new HarnessRegistry(this);
   }
