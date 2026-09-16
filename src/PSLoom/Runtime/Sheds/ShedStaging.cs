@@ -11,8 +11,14 @@ namespace PSLoom.Runtime.Sheds;
 ///   The staged statements of one session: what the last draft staged, the queue of those still waiting, and the timings of what
 ///   applied after the draft.
 /// </summary>
-internal sealed class ShedStaging {
+internal sealed class ShedStaging(LoomSession session) {
   private List<ShedEntry> _entries = [];
+
+  /// <summary>Gets the entries waiting for a prompt, an idle tick or a rescue.</summary>
+  public ShedQueue Queue { get; } = new();
+
+  /// <summary>Gets or sets how the session decides it is interactive; tests replace it.</summary>
+  internal Func<bool> IsInteractive { get; set; } = () => InteractiveHost.Detect(session.Engine);
 
   /// <summary>Gets every statement the last woven draft staged, in draft order.</summary>
   public IReadOnlyList<ShedEntry> Entries => _entries;
@@ -45,10 +51,42 @@ internal sealed class ShedStaging {
   }
 
   /// <summary>
-  ///   Records a statement staged for later. Task 3 queues it.
+  ///   Queues a statement staged for later.
   /// </summary>
-  public void Capture(ShedEntry entry)
-    => entry.State = ShedState.Pending;
+  public void Capture(ShedEntry entry) {
+    entry.State = ShedState.Pending;
+    Queue.Enqueue(entry);
+  }
+
+  /// <summary>
+  ///   Finishes a draft run: in a host that will never draw a prompt, applies the queue now and writes what failed on the cmdlet.
+  /// </summary>
+  public void Complete(PSCmdlet cmdlet) {
+    ArgumentNullException.ThrowIfNull(cmdlet);
+
+    // Apply-now statements that failed were already written as errors of Invoke-Loom; the prompt warning must not repeat them.
+    foreach (var entry in _entries.Where(entry => entry.State == ShedState.Failed)) {
+      entry.Warned = true;
+    }
+
+    if (Queue.Count == 0) {
+      return;
+    }
+
+    if (IsInteractive()) {
+      return;
+    }
+
+    Queue.DrainAll(entry => ShedApplier.Apply(session, entry));
+
+    foreach (var entry in _entries.Where(entry => entry is { State: ShedState.Failed, Warned: false })) {
+      entry.Warned = true;
+
+      foreach (var error in entry.Errors) {
+        cmdlet.WriteError(error);
+      }
+    }
+  }
 
   private static ShedEntry CreateEntry(LoomRun run, ShedDeclaration declaration, string? file) {
     var values = new Dictionary<string, object?> {
@@ -69,5 +107,5 @@ internal sealed class ShedStaging {
   }
 
   private static string Normalize(string text)
-    => string.Join(' ', text.Split((char[]) [' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries));
+    => string.Join(' ', text.Split((char[])[' ', '\t', '\r', '\n'], StringSplitOptions.RemoveEmptyEntries));
 }

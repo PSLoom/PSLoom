@@ -89,10 +89,14 @@ public sealed class InvokeLoomCmdlet : PSCmdlet {
         WriteError(error);
       }
 
-      if (!wasWoven) {
-        foreach (var failure in HookBus.PerRunspace.For(session.Runspace).RaiseSessionStarting()) {
-          WriteError(HookException.HandlerFailed(failure).ToErrorRecord());
-        }
+      session.Sheds.Complete(this);
+
+      if (wasWoven) {
+        return;
+      }
+
+      foreach (var failure in HookBus.PerRunspace.For(session.Runspace).RaiseSessionStarting()) {
+        WriteError(HookException.HandlerFailed(failure).ToErrorRecord());
       }
     }
     catch (PowerShellException exception) {

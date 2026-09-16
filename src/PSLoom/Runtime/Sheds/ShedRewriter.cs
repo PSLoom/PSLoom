@@ -46,13 +46,17 @@ internal static class ShedRewriter {
   }
 
   /// <summary>
-  ///   The staged statement alone, placed on its original lines, for applying after the draft.
+  ///   The staged statement alone, placed on its original lines, for applying after the draft. It is guarded like an apply-now
+  ///   statement: outside a <c>try</c>, a statement-terminating error (a parameter binding error) would only be written to a stream
+  ///   nobody reads, and the entry would look applied.
   /// </summary>
   public static ScriptBlock StatementScript(ShedDeclaration declaration, string? file) {
     ArgumentNullException.ThrowIfNull(declaration);
 
     var extent = declaration.Statement.Extent;
-    return Parse(new string('\n', extent.StartLineNumber - 1) + new string(' ', extent.StartColumnNumber - 1) + extent.Text, file);
+    return Parse(
+      new string('\n', extent.StartLineNumber - 1) + $"try {{ {new string(' ', extent.StartColumnNumber - 1)}{extent.Text} }} catch {{ throw }}",
+      file);
   }
 
   private static void Replace(StringBuilder text, int start, int length, string replacement)

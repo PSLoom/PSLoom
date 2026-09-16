@@ -32,7 +32,7 @@ internal sealed class LoomSession {
     Verbs.Add(typeof(TreadleVerb), KERNEL_OWNER);
     Directory = new HarnessDirectory();
     Harnesses = new HarnessRegistry(this);
-    Sheds = new ShedStaging();
+    Sheds = new ShedStaging(this);
   }
 
   /// <summary>
