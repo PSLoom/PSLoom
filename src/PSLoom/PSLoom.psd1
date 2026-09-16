@@ -15,7 +15,7 @@
   AliasesToExport = @()
 
   CmdletsToExport = @(
-    'Invoke-Loom', 'Measure-Loom', 'Update-Harness',
+    'Invoke-Loom', 'Measure-Loom', 'Get-Shed', 'Update-Harness',
     'Register-Hook', 'Unregister-Hook', 'Get-Hook', 'Trace-Hook',
     'Set-Style', 'Get-Style', 'Test-Style', 'Remove-Style', 'Get-StyleDefinition',
     'Register-StyleWatcher', 'Unregister-StyleWatcher', 'Trace-Style',

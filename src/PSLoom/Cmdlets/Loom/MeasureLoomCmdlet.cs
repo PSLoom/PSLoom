@@ -40,7 +40,8 @@ public sealed class MeasureLoomCmdlet : PSCmdlet {
         return;
       }
 
-      WriteObject(GroupBy == Grouping.None ? timings : Group(timings, GroupBy), true);
+      var all = timings.Concat(LoomSession.PerRunspace.ForCurrent().Sheds.Timings).ToArray();
+      WriteObject(GroupBy == Grouping.None ? all : Group(all, GroupBy), true);
     }
     catch (PowerShellException exception) {
       WriteError(exception.ToErrorRecord());
