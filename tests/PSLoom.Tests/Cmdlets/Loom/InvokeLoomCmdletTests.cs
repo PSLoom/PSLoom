@@ -121,7 +121,7 @@ public sealed class InvokeLoomCmdletTests {
     session.Streams.Error.ShouldBeEmpty();
     session.Streams.Verbose.ShouldContain(record => record.Message.Contains("valid"));
     session.Style("fixture:box:b", "items").ShouldBeNull();
-    session.Loom.Harnesses.TryGetByName("Fixture", out _).ShouldBeTrue();
+    session.Loom.Harnesses.TryGetByName("Fixture", out var _).ShouldBeTrue();
     session.Loom.IsWoven.ShouldBeFalse();
   }
 

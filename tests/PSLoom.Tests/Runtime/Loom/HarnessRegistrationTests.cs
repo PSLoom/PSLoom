@@ -69,7 +69,7 @@ public sealed class HarnessRegistrationTests {
     exception.ErrorId.ShouldBe(LoomException.HARNESS_COMPOSE_FAILED);
     exception.InnerException!.Message.ShouldBe("compose exploded");
     session.Loom.Verbs.FindByName("Marked").ShouldBeEmpty();
-    session.Loom.Harnesses.TryGetByName("Broken", out _).ShouldBeFalse();
+    session.Loom.Harnesses.TryGetByName("Broken", out var _).ShouldBeFalse();
   }
 
   [Fact]
