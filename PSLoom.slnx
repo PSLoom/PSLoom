@@ -9,6 +9,11 @@
     <File Path="benchmarks/Measure-Startup.ps1" />
     <Project Path="benchmarks/PSLoom.Benchmarks/PSLoom.Benchmarks.csproj" />
   </Folder>
+  <Folder Name="/Docs/">
+    <File Path="docs/architecture.md" />
+    <File Path="docs/harness-authoring.md" />
+    <File Path="docs/invariants.md" />
+  </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path=".gitignore" />
