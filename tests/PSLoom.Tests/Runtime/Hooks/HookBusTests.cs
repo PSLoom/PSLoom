@@ -120,6 +120,21 @@ public sealed class HookBusTests {
   }
 
   [Fact]
+  public void Dispatch_RunsHandlersInRegistrationOrder() {
+    // Harvested: HookDispatcherTests.Fire_MultipleConsumers_FireInRegistrationOrder.
+    using var runspace = PowerShellHost.CreateRunspace();
+    var bus = new HookBus(runspace);
+    var order = new List<string>();
+    bus.Subscribe(HookKind.PrePrompt, _ => order.Add("first"));
+    bus.Subscribe(HookKind.PrePrompt, _ => order.Add("second"), "named");
+    bus.Subscribe(HookKind.PrePrompt, _ => order.Add("third"));
+
+    bus.Dispatch(HookKind.PrePrompt);
+
+    order.ShouldBe(["first", "second", "third"]);
+  }
+
+  [Fact]
   public void Dispatch_ThrowingHandler_DoesNotPreventSiblings_AndIsRecorded() {
     using var runspace = PowerShellHost.CreateRunspace();
     var bus = new HookBus(runspace);

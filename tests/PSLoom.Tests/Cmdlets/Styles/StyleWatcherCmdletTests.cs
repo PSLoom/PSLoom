@@ -105,6 +105,15 @@ public sealed class StyleWatcherCmdletTests {
   }
 
   [Fact]
+  public void TraceStyle_NothingRecordedYet_ReturnsEmpty() {
+    // Harvested: TraceStyleCmdletTests.Invoke_NothingRecordedYet_ReturnsEmpty.
+    using var session = new KernelSession();
+
+    session.Run("Trace-Style").ShouldBeEmpty();
+    session.Streams.Error.ShouldBeEmpty();
+  }
+
+  [Fact]
   public void TraceStyle_ReturnsWatcherRuns_WithLast() {
     using var session = new KernelSession();
     session.Run("Register-StyleWatcher 'app:*' 'color' { throw 'boom' } -Pattern | Out-Null");

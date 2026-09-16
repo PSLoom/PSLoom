@@ -80,6 +80,20 @@ public sealed class ModuleInitializerTests {
   }
 
   [Fact]
+  public void ASourceIdentifierOtherThanTheEventName_NeverSeesExiting() {
+    // Harvested: EngineEventWiringTests.Subscribe_DifferentEventIdentifier_DoesNotFire — the predecessor's latent defect, kept as
+    // proof of why the kernel subscribes under the event name itself.
+    using var runspace = PowerShellHost.CreateRunspace();
+    using var shell = PowerShellHost.CreateShell(runspace);
+    var fired = false;
+    runspace.Events.SubscribeEvent(null, null, "PSLoom.Exiting", null, (_, _) => fired = true, true, false);
+
+    shell.Run("New-Event -SourceIdentifier ([System.Management.Automation.PSEngineEvent]::Exiting) | Out-Null");
+
+    fired.ShouldBeFalse();
+  }
+
+  [Fact]
   public void OnEngineExiting_FromThreadWithoutDefaultRunspace_RunsScriptHandlers() {
     using var runspace = PowerShellHost.CreateRunspace();
     var initializer = new ModuleInitializer();

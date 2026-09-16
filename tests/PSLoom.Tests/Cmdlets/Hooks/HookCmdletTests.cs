@@ -90,6 +90,15 @@ public sealed class HookCmdletTests {
   }
 
   [Fact]
+  public void TraceHook_NothingRecordedYet_ReturnsEmpty() {
+    // Harvested: TraceHookCmdletTests.Invoke_NothingRecordedYet_ReturnsEmpty.
+    using var session = new KernelSession();
+
+    session.Run("Trace-Hook").ShouldBeEmpty();
+    session.Streams.Error.ShouldBeEmpty();
+  }
+
+  [Fact]
   public void TraceHook_ReturnsThrowingAndSlowEntries_WithLast() {
     using var session = new KernelSession();
     var bus = HookBus.PerRunspace.For(session.Runspace);

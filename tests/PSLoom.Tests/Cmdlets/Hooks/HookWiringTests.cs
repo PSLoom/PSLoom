@@ -2,6 +2,7 @@
 // See the LICENSE file in the repository root for full license text.
 
 using System.Management.Automation;
+using System.Management.Automation.Runspaces;
 using JetBrains.Annotations;
 using PSLoom.Runtime.Hooks;
 using PSLoom.TestKit;
@@ -84,6 +85,19 @@ public sealed class HookWiringTests {
   }
 
   [Fact]
+  public void CommandNotFound_NoHookResolves_EveryHookRuns() {
+    // Harvested: HookDispatcherCommandNotFoundTests.FireCommandNotFound_NoConsumerClaimsTheMiss_EveryConsumerRuns.
+    using var session = new KernelSession();
+    session.Run("Register-Hook CommandNotFound { $global:first = $true } | Out-Null");
+    session.Run("Register-Hook CommandNotFound { $global:second = $true } | Out-Null");
+
+    session.Run("DoesNotExist12345");
+
+    session.Global("first").ShouldBe(true);
+    session.Global("second").ShouldBe(true);
+  }
+
+  [Fact]
   public void PrePrompt_RunsHookAndPreservesOriginalOutput() {
     using var session = new KernelSession();
     session.Run("function global:prompt { 'MY-PROMPT> ' }");
@@ -161,6 +175,78 @@ public sealed class HookWiringTests {
     session.Streams.Warning.ShouldBeEmpty();
     session.Global("previousLine").ShouldBe("Get-Process");
     session.Global("submitted").ShouldBe("Get-Process");
+  }
+
+  [Fact]
+  public void PreExecute_HandlerCalledFromAnotherThread_DispatchesToTheCapturedRunspace() {
+    using var session = new KernelSession();
+    session.Run(
+      """
+      $global:__fakeOption = [pscustomobject]@{ LineAcceptedHandler = $null }
+      function global:Get-PSReadLineOption { $global:__fakeOption }
+      function global:Set-PSReadLineOption { param([Action[string,int]]$LineAcceptedHandler) $global:__fakeOption.LineAcceptedHandler = $LineAcceptedHandler }
+      """);
+    session.Run("Register-Hook PreExecute { $global:submitted = $_.CommandLine } | Out-Null");
+    var handler = (Action<string, int>)session.Run("$global:__fakeOption.LineAcceptedHandler").Single().BaseObject;
+
+    // PSReadLine may call back on a thread whose DefaultRunspace is not the session's; the handler must not depend on it.
+    var thread = new Thread(() => {
+      Runspace.DefaultRunspace = null;
+      handler("Get-Date", 8);
+    });
+    thread.Start();
+    thread.Join();
+
+    session.Global("submitted").ShouldBe("Get-Date");
+  }
+
+  [Fact]
+  public void PreExecute_PSReadLineWithoutTheParameter_WarnsAndNeverRaisesABindingError() {
+    // Deliberate difference from the predecessor's PreExecuteWiringTests.Enable_OnlyAddToHistoryHandlerAvailable_…: there is no
+    // AddToHistoryHandler fallback. That handler runs for lines that never execute and skips ones kept out of history, so
+    // PreExecute would fire at the wrong times; without -LineAcceptedHandler the kind stays unwired and says so.
+    using var session = new KernelSession();
+    session.Run(
+      """
+      function global:Get-PSReadLineOption { [pscustomobject]@{ EditMode = 'Windows' } }
+      function global:Set-PSReadLineOption { param([string]$EditMode) }
+      """);
+
+    session.Run("Register-Hook PreExecute { } | Out-Null");
+
+    session.Streams.Error.ShouldBeEmpty();
+    session.Streams.Warning.ShouldHaveSingleItem().Message.ShouldContain("PreExecute hooks will not run");
+    HookBus.PerRunspace.For(session.Runspace).Wiring.IsWired(HookKind.PreExecute).ShouldBeFalse();
+  }
+
+  [Fact]
+  public void Unregister_LeavesTheWrappedPromptInPlace_AndItRunsNoHandler() {
+    using var session = new KernelSession();
+    session.Run("Register-Hook PrePrompt { $global:prePromptRan = $true } | Out-Null");
+    var wrapped = session.Run("(Get-Command prompt).Definition").Single().BaseObject;
+
+    session.Run("Get-Hook | Unregister-Hook");
+    session.Run("prompt | Out-Null");
+
+    // Wiring is never unwound: the wrapper stays, and with no handler left it only renders the prompt it wrapped.
+    session.Run("(Get-Command prompt).Definition").Single().BaseObject.ShouldBe(wrapped);
+    HookBus.PerRunspace.For(session.Runspace).Wiring.IsWired(HookKind.PrePrompt).ShouldBeTrue();
+    session.Global("prePromptRan").ShouldBeNull();
+  }
+
+  [Fact]
+  public void Unregister_LeavesTheLocationChangedActionInPlace_AndItRunsNoHandler() {
+    // Deliberate difference from the predecessor's ModuleLifecycleTests.Remove_UnwiresDirectoryChanged_…: wiring is never unwound
+    // (invariant 6), because another tool may have chained the same action after PSLoom did.
+    using var session = new KernelSession();
+    session.Run("Register-Hook DirectoryChanged { $global:chpwdRan = $true } | Out-Null");
+
+    session.Run("Get-Hook | Unregister-Hook");
+    session.Run($"Set-Location -Path '{TempPathLiteral()}'");
+
+    session.Run("$null -ne $ExecutionContext.SessionState.InvokeCommand.LocationChangedAction").Single().BaseObject.ShouldBe(true);
+    HookBus.PerRunspace.For(session.Runspace).Wiring.IsWired(HookKind.DirectoryChanged).ShouldBeTrue();
+    session.Global("chpwdRan").ShouldBeNull();
   }
 
   [Fact]
