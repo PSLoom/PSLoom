@@ -35,6 +35,15 @@ public sealed class LoomException : PowerShellException {
   internal const string THREAD_VERSION_CONFLICT = "LOOM_THREAD_VERSION_CONFLICT";
   internal const string REWEAVE_REQUIRES_RESTART = "LOOM_REWEAVE_REQUIRES_RESTART";
   internal const string REWEAVE_REVERT_FAILED = "LOOM_REWEAVE_REVERT_FAILED";
+  internal const string SHED_NOT_TOP_LEVEL = "LOOM_SHED_NOT_TOP_LEVEL";
+  internal const string SHED_DANGLING = "LOOM_SHED_DANGLING";
+  internal const string SHED_STACKED = "LOOM_SHED_STACKED";
+  internal const string SHED_NOT_LITERAL = "LOOM_SHED_NOT_LITERAL";
+  internal const string SHED_TIMING_CONFLICT = "LOOM_SHED_TIMING_CONFLICT";
+  internal const string SHED_NOT_ON_DEMAND = "LOOM_SHED_NOT_ON_DEMAND";
+  internal const string SHED_NOT_APPLICABLE = "LOOM_SHED_NOT_APPLICABLE";
+  internal const string SHED_UNKNOWN_MODIFIER = "LOOM_SHED_UNKNOWN_MODIFIER";
+  internal const string SHED_APPLY_FAILED = "LOOM_SHED_APPLY_FAILED";
 
   private LoomException(string errorId, ErrorCategory errorCategory, string message, object? targetObject, Exception? innerException = null)
     : base(errorId, errorCategory, message, targetObject, innerException) { }
@@ -147,6 +156,41 @@ public sealed class LoomException : PowerShellException {
 
   internal static string InstallCommand(string moduleName, Version? version)
     => $"Install-PSResource -Name {moduleName}{(version is null ? string.Empty : $" -Version {version}")} -Repository PSGallery -Scope CurrentUser";
+
+  internal static LoomException ShedNotTopLevel(IScriptExtent extent)
+    => new(SHED_NOT_TOP_LEVEL, ErrorCategory.InvalidOperation, "'Shed' stages the statement after it and is valid only at the top level of the draft." + Where(extent),
+      extent.Text);
+
+  internal static LoomException ShedDangling(IScriptExtent extent)
+    => new(SHED_DANGLING, ErrorCategory.InvalidOperation, "'Shed' must be followed by the statement it stages." + Where(extent), extent.Text);
+
+  internal static LoomException ShedStacked(IScriptExtent extent)
+    => new(SHED_STACKED, ErrorCategory.InvalidOperation, "Two 'Shed' statements in a row; put every modifier on one 'Shed'." + Where(extent),
+      extent.Text);
+
+  internal static LoomException ShedNotLiteral(string modifier, string expected, IScriptExtent extent)
+    => new(SHED_NOT_LITERAL, ErrorCategory.InvalidArgument,
+      $"'Shed -{modifier}' needs {expected}, so how the statement applies is known before the draft runs." + Where(extent), extent.Text);
+
+  internal static LoomException ShedTimingConflict(IScriptExtent extent)
+    => new(SHED_TIMING_CONFLICT, ErrorCategory.InvalidArgument, "'Shed' takes at most one of -Wait, -Slot and -OnDemand." + Where(extent),
+      extent.Text);
+
+  internal static LoomException ShedNotOnDemand(IScriptExtent extent)
+    => new(SHED_NOT_ON_DEMAND, ErrorCategory.InvalidOperation,
+      "'Shed -OnDemand' needs a verb that arms itself on first use, and the statement after it is not one." + Where(extent), extent.Text);
+
+  internal static LoomException ShedNotApplicable(string reason, IScriptExtent extent)
+    => new(SHED_NOT_APPLICABLE, ErrorCategory.InvalidOperation, $"This statement cannot be staged: {reason}" + Where(extent), extent.Text);
+
+  internal static LoomException ShedUnknownModifier(string name, IScriptExtent extent)
+    => new(SHED_UNKNOWN_MODIFIER, ErrorCategory.InvalidArgument,
+      $"'Shed' has no modifier '-{name}'. Its modifiers are -Wait, -Slot, -OnDemand, -LoadIf, -RequiresCommand, -Lucid, -Silent and -AtLoad." +
+      Where(extent), name);
+
+  internal static LoomException ShedApplyFailed(int? line, string statement, Exception? inner)
+    => new(SHED_APPLY_FAILED, ErrorCategory.NotSpecified,
+      $"The staged statement '{statement}'{(line is > 0 ? $" (line {line})" : string.Empty)} failed: {inner?.Message}", statement, inner);
 
   internal static ErrorRecord FromStatement(Exception exception)
     => exception switch {
