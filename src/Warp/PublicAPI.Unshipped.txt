@@ -198,3 +198,10 @@ virtual PSLoom.Warp.PowerShellException.ToErrorRecord() -> System.Management.Aut
 virtual PSLoom.Warp.Styles.StyleWatcher.Invoke(PSLoom.Warp.Styles.StyleChange change) -> void
 ~override PSLoom.Warp.Styles.StyleChange.Equals(object obj) -> bool
 ~override PSLoom.Warp.Styles.StyleChange.ToString() -> string
+PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Applied = 2 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Armed = 1 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Failed = 4 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Pending = 0 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Skipped = 3 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Superseded = 5 -> PSLoom.Warp.Dsl.ShedState
