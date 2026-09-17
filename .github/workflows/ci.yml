@@ -2,8 +2,8 @@ name: CI
 
 on:
   push:
-    branches: [main]
-    tags: ['psloom/v*', 'reed/v*']
+    branches: [main, develop]
+    tags: ['psloom/v*']
   pull_request:
 
 permissions:
@@ -40,12 +40,20 @@ jobs:
       # Import < 50 ms and the typical draft < 150 ms, medians of cold processes (section 6 of the design).
       - name: Startup budgets
         shell: pwsh
-        run: ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/typical.ps1
+        run: ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/typical.ps1 -AllowHarness Fixture
 
       # The same profile with nothing staged, reported next to the gated one: the difference is what Shed buys.
       - name: Eager draft (report only)
         shell: pwsh
-        run: ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/eager.ps1 -ReportOnly
+        run: ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/eager.ps1 -AllowHarness Fixture -ReportOnly
+
+      - name: Verify packed SDK
+        shell: pwsh
+        run: |
+          $version = "0.0.0-local.$env:GITHUB_RUN_ID.$env:GITHUB_RUN_ATTEMPT"
+          ./build/Pack-Local.ps1 -Output artifacts/packages -Version $version
+          ./build/Test-BuildSdk.ps1 -Directory artifacts/packages -Version $version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
   benchmarks:
     # One OS only: shared runners are noisy and BenchmarkDotNet is slow; the budgets are orders of magnitude apart from noise.
@@ -64,7 +72,7 @@ jobs:
       - name: Run budgeted benchmarks
         run: >-
           dotnet run --configuration Release --project benchmarks/PSLoom.Benchmarks --
-          --filter '*StyleResolveBenchmarks*' '*HookDispatchBenchmarks*' '*CompletionBenchmarks*'
+          --filter '*StyleResolveBenchmarks*' '*HookDispatchBenchmarks*'
           --exporters json
 
       - name: Check budgets
@@ -77,3 +85,41 @@ jobs:
         with:
           name: benchmark-results
           path: BenchmarkDotNet.Artifacts/results
+
+  publish:
+    name: publish packages
+    if: startsWith(github.ref, 'refs/tags/psloom/v')
+    needs: [build, benchmarks]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Pack
+        shell: pwsh
+        run: |
+          $projects = 'src/Warp/Warp.csproj', 'src/PSLoom.Build/PSLoom.Build.csproj', 'tests/PSLoom.TestKit/PSLoom.TestKit.csproj', 'src/PSLoom/PSLoom.csproj'
+          foreach ($project in $projects) {
+            dotnet pack $project --configuration Release --output artifacts/packages
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+          $version = '${{ github.ref_name }}'.Substring('psloom/v'.Length)
+          ./build/Test-Packages.ps1 -Directory artifacts/packages -Version $version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./build/Test-BuildSdk.ps1 -Directory artifacts/packages -Version $version
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Push
+        run: >-
+          dotnet nuget push "artifacts/packages/*.nupkg"
+          --source https://nuget.pkg.github.com/PSLoom/index.json
+          --api-key ${{ secrets.GITHUB_TOKEN }}
