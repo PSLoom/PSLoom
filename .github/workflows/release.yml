@@ -1,0 +1,111 @@
+name: Release
+
+on:
+  push:
+    tags: ['psloom/v*']
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  metadata:
+    name: Validate release tag
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.tag.outputs.version }}
+      prerelease: ${{ steps.tag.outputs.prerelease }}
+    steps:
+      - name: Validate semantic version
+        id: tag
+        shell: pwsh
+        run: |
+          $pattern = '^psloom/v(?<version>(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?<prerelease>-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?)$'
+          if ($env:GITHUB_REF_NAME -cnotmatch $pattern) {
+            throw 'Expected psloom/vMAJOR.MINOR.PATCH[-PRERELEASE], without build metadata.'
+          }
+          "version=$($Matches.version)" >> $env:GITHUB_OUTPUT
+          "prerelease=$([bool]$Matches.prerelease)".ToLowerInvariant() >> $env:GITHUB_OUTPUT
+
+  verify:
+    name: Verify tagged commit
+    needs: metadata
+    uses: ./.github/workflows/ci.yml
+
+  publish:
+    name: Publish packages and release
+    needs: [metadata, verify]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
+      RELEASE_PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+
+      - name: Pack tagged version
+        shell: pwsh
+        run: |
+          $projects = 'src/Warp/Warp.csproj', 'src/PSLoom.Build/PSLoom.Build.csproj', 'tests/PSLoom.TestKit/PSLoom.TestKit.csproj', 'src/PSLoom/PSLoom.csproj'
+          foreach ($project in $projects) {
+            dotnet pack $project --configuration Release --output artifacts/packages "-p:VersionOverride=$env:RELEASE_VERSION"
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Verify kernel packages and SDK consumers
+        shell: pwsh
+        run: |
+          ./build/Test-Packages.ps1 -Directory artifacts/packages -Version $env:RELEASE_VERSION
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./build/Test-BuildSdk.ps1 -Directory artifacts/packages -Version $env:RELEASE_VERSION
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Prepare release assets
+        shell: pwsh
+        run: ./.github/scripts/New-ReleaseAssets.ps1 -Version $env:RELEASE_VERSION
+
+      - name: Preserve release assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/release/*
+          if-no-files-found: error
+
+      - name: Create draft release
+        shell: pwsh
+        run: |
+          $arguments = @('release', 'create', $env:GITHUB_REF_NAME, '--verify-tag', '--draft',
+            '--title', "PSLoom $env:RELEASE_VERSION", '--generate-notes')
+          if ($env:RELEASE_PRERELEASE -eq 'true') { $arguments += '--prerelease' }
+          $arguments += @(Get-ChildItem artifacts/release -File | ForEach-Object FullName)
+          gh @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+      - name: Publish NuGet packages
+        shell: pwsh
+        run: |
+          foreach ($package in Get-ChildItem artifacts/release -Filter '*.nupkg') {
+            dotnet nuget push $package.FullName --source https://nuget.pkg.github.com/PSLoom/index.json --api-key $env:GH_TOKEN
+            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          }
+
+      - name: Publish GitHub release
+        shell: pwsh
+        run: |
+          $arguments = @('release', 'edit', $env:GITHUB_REF_NAME, '--draft=false')
+          if ($env:RELEASE_PRERELEASE -eq 'true') { $arguments += '--latest=false' }
+          gh @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

@@ -3,8 +3,8 @@ name: CI
 on:
   push:
     branches: [main, develop]
-    tags: ['psloom/v*']
   pull_request:
+  workflow_call:
 
 permissions:
   contents: read
@@ -85,41 +85,3 @@ jobs:
         with:
           name: benchmark-results
           path: BenchmarkDotNet.Artifacts/results
-
-  publish:
-    name: publish packages
-    if: startsWith(github.ref, 'refs/tags/psloom/v')
-    needs: [build, benchmarks]
-    runs-on: ubuntu-latest
-    permissions:
-      contents: read
-      packages: write
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
-      - name: Pack
-        shell: pwsh
-        run: |
-          $projects = 'src/Warp/Warp.csproj', 'src/PSLoom.Build/PSLoom.Build.csproj', 'tests/PSLoom.TestKit/PSLoom.TestKit.csproj', 'src/PSLoom/PSLoom.csproj'
-          foreach ($project in $projects) {
-            dotnet pack $project --configuration Release --output artifacts/packages
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-          $version = '${{ github.ref_name }}'.Substring('psloom/v'.Length)
-          ./build/Test-Packages.ps1 -Directory artifacts/packages -Version $version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ./build/Test-BuildSdk.ps1 -Directory artifacts/packages -Version $version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Push
-        run: >-
-          dotnet nuget push "artifacts/packages/*.nupkg"
-          --source https://nuget.pkg.github.com/PSLoom/index.json
-          --api-key ${{ secrets.GITHUB_TOKEN }}

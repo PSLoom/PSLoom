@@ -46,6 +46,24 @@ dotnet run -c Release --project benchmarks/PSLoom.Benchmarks -- --filter '*Style
 ./benchmarks/Assert-Budgets.ps1
 ```
 
+## Automated releases
+
+Push a semantic version tag from the commit on `develop` that you want to release. The `Release` workflow validates the tag and calls the reusable `CI` workflow on that same commit. Branch pushes and pull requests continue to run `CI` independently; tag pushes run `Release`.
+
+```powershell
+git switch develop
+git tag -a psloom/v0.1.0-alpha.1 -m "PSLoom 0.1.0-alpha.1"
+git push origin psloom/v0.1.0-alpha.1
+```
+
+Use a new version for each release. Tags accept `MAJOR.MINOR.PATCH[-PRERELEASE]`; build metadata (`+...`) is rejected because NuGet does not use it to distinguish package versions. Any prerelease suffix, including `alpha`, `beta` and `rc`, produces a GitHub prerelease.
+
+After all tests, startup budgets and benchmarks pass, the workflow packs the exact tagged version, validates the package assets and creates a draft GitHub Release. It then publishes all four SDK packages to the organization's GitHub Packages feed and makes the release visible. The release contains the `.nupkg` files and a `PSLoom.<version>.zip` with the installable `PSLoom/<core-version>/` module directory. The ZIP is assembled from the packaged module, so it matches the NuGet contents. Packages and releases inherit their configured GitHub visibility; nothing is published to PSGallery or nuget.org.
+
+The publishing job uses `GITHUB_TOKEN` with `packages: write` and `contents: write`. Verification jobs retain read permissions. Assets are also retained as an Actions artifact if external publication fails. Publication is not transactional: a failure can leave some packages published and the GitHub Release in draft. Versions are never silently overwritten or skipped; inspect any partial publication and release a new version instead of moving an existing tag.
+
+For the first release, resolve the CI startup failures before pushing the tag. After the four packages are published, grant `PSLoom/Reed` Actions read access in each package's settings. Then run Reed's CI against the version pinned in its `Directory.Packages.props`.
+
 ## Harness SDK
 
 | Package | Purpose |
