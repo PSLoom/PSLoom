@@ -92,7 +92,10 @@
   <Target Name="PackModuleLayout" DependsOnTargets="GeneratePowerShellManifest" Condition="'$(PowerShellManifest)' != ''">
     <Error Condition="!Exists('$(TargetPath)')" Text="Build $(MSBuildProjectName) before packing its module layout." />
     <ItemGroup>
-      <TfmSpecificPackageFile Include="$(OutDir)**\*" Exclude="$(OutDir)**\*.pdb" PackagePath="module\%(RecursiveDir)" />
+      <_PackedModuleFile Include="$(OutDir)**/*" Exclude="$(OutDir)**/*.pdb" />
+      <TfmSpecificPackageFile Include="@(_PackedModuleFile)">
+        <PackagePath>module/%(_PackedModuleFile.RecursiveDir)</PackagePath>
+      </TfmSpecificPackageFile>
     </ItemGroup>
   </Target>
 
