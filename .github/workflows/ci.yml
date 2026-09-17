@@ -70,6 +70,7 @@ jobs:
       - name: Startup measurements
         shell: pwsh
         run: |
+          ./.github/scripts/Test-StartupLaunch.ps1
           New-Item -ItemType Directory -Force artifacts/measurements | Out-Null
           ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/typical.ps1 -AllowHarness Fixture -ReportOnly *>&1 | Tee-Object artifacts/measurements/startup.txt
           ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/eager.ps1 -AllowHarness Fixture -ReportOnly *>&1 | Tee-Object artifacts/measurements/eager.txt

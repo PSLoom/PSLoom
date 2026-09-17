@@ -46,6 +46,14 @@ $ErrorActionPreference = 'Stop'
 
 $modulesDirectory = Join-Path $PSScriptRoot '..' 'artifacts' 'modules' | Resolve-Path
 $pwsh = (Get-Process -Id $PID).Path
+# A .NET tool runs inside dotnet, which needs the PowerShell entry assembly
+# before the shell arguments. Preserve the exact runtime used by this process.
+$pwshArguments = @()
+if ([IO.Path]::GetFileNameWithoutExtension($pwsh) -eq 'dotnet') {
+  $entryAssembly = Join-Path $PSHOME 'pwsh.dll'
+  if (-not (Test-Path -LiteralPath $entryAssembly)) { throw "PowerShell entry assembly missing: $entryAssembly" }
+  $pwshArguments = @($entryAssembly)
+}
 
 $probe = @'
 param($ModulesDirectory, $DraftPath, [string[]]$AllowHarness)
@@ -85,7 +93,7 @@ $imports = [Collections.Generic.List[double]]::new()
 $drafts = [Collections.Generic.List[double]]::new()
 
 for ($i = 0; $i -lt $Iterations; $i++) {
-  $output = & $pwsh -NoProfile -NonInteractive -EncodedCommand $encoded
+  $output = & $pwsh @pwshArguments -NoProfile -NonInteractive -EncodedCommand $encoded
   if ($LASTEXITCODE -ne 0) { throw "Probe process failed with exit code $LASTEXITCODE." }
   $parts = ($output | Select-Object -Last 1) -split ';'
   $imports.Add([double]::Parse($parts[0], [cultureinfo]::InvariantCulture))
