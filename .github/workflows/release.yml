@@ -1,111 +1,206 @@
 name: Release
-
 on:
   push:
-    tags: ['psloom/v*']
-
+    branches: [develop, main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate without tags, publication or PR changes
+        type: boolean
+        default: true
+      resume_tag:
+        description: Existing release tag to recover using its preserved artifacts
+        type: string
+        default: ''
 permissions:
   contents: read
-
+  packages: read
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.repository }}
   cancel-in-progress: false
-
 jobs:
-  metadata:
-    name: Validate release tag
+  plan:
     runs-on: ubuntu-latest
     outputs:
-      version: ${{ steps.tag.outputs.version }}
-      prerelease: ${{ steps.tag.outputs.prerelease }}
+      publish: ${{ steps.plan.outputs.publish }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      sha: ${{ steps.plan.outputs.sha }}
+      channel: ${{ steps.plan.outputs.channel }}
+      resume: ${{ steps.plan.outputs.resume }}
     steps:
-      - name: Validate semantic version
-        id: tag
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - name: Compute release
+        id: plan
+        shell: pwsh
+        env:
+          CHANNEL: ${{ github.ref_name }}
+          RESUME_TAG: ${{ inputs.resume_tag }}
+        run: ./.github/scripts/Get-ReleasePlan.ps1 -Channel $env:CHANNEL -ResumeTag $env:RESUME_TAG
+  verify:
+    needs: plan
+    if: needs.plan.outputs.resume != 'true'
+    uses: ./.github/workflows/ci.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+  pack:
+    needs: [plan, verify]
+    if: needs.plan.outputs.publish == 'true' && needs.plan.outputs.resume != 'true'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+      RELEASE_SHA: ${{ needs.plan.outputs.sha }}
+      GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - name: Pack final version
         shell: pwsh
         run: |
-          $pattern = '^psloom/v(?<version>(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?<prerelease>-(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9][0-9]*|[0-9]*[A-Za-z-][0-9A-Za-z-]*))*)?)$'
-          if ($env:GITHUB_REF_NAME -cnotmatch $pattern) {
-            throw 'Expected psloom/vMAJOR.MINOR.PATCH[-PRERELEASE], without build metadata.'
-          }
-          "version=$($Matches.version)" >> $env:GITHUB_OUTPUT
-          "prerelease=$([bool]$Matches.prerelease)".ToLowerInvariant() >> $env:GITHUB_OUTPUT
-
-  verify:
-    name: Verify tagged commit
-    needs: metadata
-    uses: ./.github/workflows/ci.yml
-
+          ./build/Pack-Local.ps1 -Output artifacts/packages -Version $env:RELEASE_VERSION
+          ./.github/scripts/New-ReleaseAssets.ps1 -Version $env:RELEASE_VERSION
+          ./.github/scripts/New-ReleaseManifest.ps1 -Version $env:RELEASE_VERSION -Sha $env:RELEASE_SHA -Repository $env:GITHUB_REPOSITORY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/release/*
+          if-no-files-found: error
+  validate:
+    needs: [plan, pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+      GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/release
+      - name: Test final packages
+        shell: pwsh
+        run: |
+          ./build/Test-Packages.ps1 -Directory artifacts/release -Version $env:RELEASE_VERSION
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./build/Test-BuildSdk.ps1 -Directory artifacts/release -Version $env:RELEASE_VERSION
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.github/scripts/Test-PackedModule.ps1
   publish:
-    name: Publish packages and release
-    needs: [metadata, verify]
+    needs: [plan, verify, pack, validate]
+    if: >-
+      always() && needs.plan.result == 'success' && needs.plan.outputs.publish == 'true' &&
+      vars.RELEASE_ENABLED == 'true' && inputs.dry_run != true &&
+      (needs.plan.outputs.resume == 'true' || (needs.verify.result == 'success' && needs.validate.result == 'success'))
     runs-on: ubuntu-latest
     permissions:
       contents: write
       packages: write
     env:
-      RELEASE_VERSION: ${{ needs.metadata.outputs.version }}
-      RELEASE_PRERELEASE: ${{ needs.metadata.outputs.prerelease }}
       GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+      RELEASE_TAG: ${{ needs.plan.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
         with:
+          ref: ${{ needs.plan.outputs.sha }}
           fetch-depth: 0
-
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-
-      - name: Pack tagged version
+      - name: Pin PowerShell
         shell: pwsh
-        run: |
-          $projects = 'src/Warp/Warp.csproj', 'src/PSLoom.Build/PSLoom.Build.csproj', 'tests/PSLoom.TestKit/PSLoom.TestKit.csproj', 'src/PSLoom/PSLoom.csproj'
-          foreach ($project in $projects) {
-            dotnet pack $project --configuration Release --output artifacts/packages "-p:VersionOverride=$env:RELEASE_VERSION"
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-
-      - name: Verify kernel packages and SDK consumers
-        shell: pwsh
-        run: |
-          ./build/Test-Packages.ps1 -Directory artifacts/packages -Version $env:RELEASE_VERSION
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          ./build/Test-BuildSdk.ps1 -Directory artifacts/packages -Version $env:RELEASE_VERSION
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-      - name: Prepare release assets
-        shell: pwsh
-        run: ./.github/scripts/New-ReleaseAssets.ps1 -Version $env:RELEASE_VERSION
-
-      - name: Preserve release assets
-        uses: actions/upload-artifact@v4
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.resume != 'true'
         with:
           name: release-assets
-          path: artifacts/release/*
-          if-no-files-found: error
-
-      - name: Create draft release
+          path: artifacts/release
+      - name: Publish or resume verified assets
         shell: pwsh
+        env:
+          RESUME: ${{ needs.plan.outputs.resume }}
         run: |
-          $arguments = @('release', 'create', $env:GITHUB_REF_NAME, '--verify-tag', '--draft',
-            '--title', "PSLoom $env:RELEASE_VERSION", '--generate-notes')
-          if ($env:RELEASE_PRERELEASE -eq 'true') { $arguments += '--prerelease' }
-          $arguments += @(Get-ChildItem artifacts/release -File | ForEach-Object FullName)
+          $parameters = @{ Repository = $env:GITHUB_REPOSITORY }
+          if ($env:RESUME -eq 'true') { $parameters.ResumeTag = $env:RELEASE_TAG }
+          ./.github/scripts/Publish-Release.ps1 @parameters
+  consumer-access:
+    needs: [plan, publish]
+    if: always() && needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: PSLoom
+          repositories: Reed
+          permission-contents: read
+          permission-actions: write
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - name: Verify access with Reed repository token
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+        run: ./.github/scripts/Wait-ConsumerProbe.ps1 -Version $env:RELEASE_VERSION
+      - name: Complete release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+          CHANNEL: ${{ needs.plan.outputs.channel }}
+        run: |
+          $arguments = @('release','edit',$env:RELEASE_TAG,'--repo',$env:GITHUB_REPOSITORY,'--draft=false')
+          if ($env:CHANNEL -eq 'develop') { $arguments += '--latest=false' }
           gh @arguments
           if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
-      - name: Publish NuGet packages
-        shell: pwsh
-        run: |
-          foreach ($package in Get-ChildItem artifacts/release -Filter '*.nupkg') {
-            dotnet nuget push $package.FullName --source https://nuget.pkg.github.com/PSLoom/index.json --api-key $env:GH_TOKEN
-            if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-          }
-
-      - name: Publish GitHub release
-        shell: pwsh
-        run: |
-          $arguments = @('release', 'edit', $env:GITHUB_REF_NAME, '--draft=false')
-          if ($env:RELEASE_PRERELEASE -eq 'true') { $arguments += '--latest=false' }
-          gh @arguments
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  follow-up:
+    needs: [plan, consumer-access]
+    if: always() && needs.consumer-access.result == 'success'
+    uses: ./.github/workflows/release-prs.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+      channel: ${{ needs.plan.outputs.channel }}
+    secrets: inherit

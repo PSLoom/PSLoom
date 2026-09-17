@@ -1,0 +1,12 @@
+{
+  "prefix": "psloom",
+  "module": "PSLoom",
+  "solution": "PSLoom.slnx",
+  "packages": [
+    "PSLoom.Warp",
+    "PSLoom.Build",
+    "PSLoom.TestKit",
+    "PSLoom"
+  ],
+  "reedSha": "3ff3ae2a7948a807b68b7122e0f2ae64a6aaa3e5"
+}

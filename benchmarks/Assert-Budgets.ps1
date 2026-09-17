@@ -21,7 +21,8 @@
 [CmdletBinding()]
 param(
   [string]$ResultsDirectory = (Join-Path $PSScriptRoot '..' 'BenchmarkDotNet.Artifacts' 'results'),
-  [double]$Tolerance = 1.2
+  [double]$Tolerance = 1.2,
+  [switch]$ReportOnly
 )
 
 $ErrorActionPreference = 'Stop'
@@ -62,12 +63,21 @@ $rows = foreach ($budget in $budgets) {
     continue
   }
 
+  if ($null -eq $benchmark.Statistics -or $null -eq $benchmark.Statistics.Median) {
+    throw "Missing statistics for $($budget.Benchmark)."
+  }
   $median = [double]$benchmark.Statistics.Median
+  if (-not [double]::IsFinite($median) -or $median -le 0) {
+    throw "Invalid median for $($budget.Benchmark): $median"
+  }
+  if ($null -ne $budget.MaxBytes -and $null -eq $benchmark.Memory.BytesAllocatedPerOperation) {
+    throw "Missing allocation measurements for $($budget.Benchmark)."
+  }
   $bytes = [long]$benchmark.Memory.BytesAllocatedPerOperation
   $withinTime = $median -le $budget.MaxNanoseconds * $Tolerance
   $withinMemory = $null -eq $budget.MaxBytes -or $bytes -le $budget.MaxBytes
 
-  if (-not ($withinTime -and $withinMemory)) {
+  if (-not $withinMemory -or (-not $withinTime -and -not $ReportOnly)) {
     $failed = $true
   }
 

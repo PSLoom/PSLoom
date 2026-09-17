@@ -1,15 +1,31 @@
 name: CI
-
 on:
-  push:
-    branches: [main, develop]
   pull_request:
+  workflow_dispatch:
   workflow_call:
-
+    inputs:
+      version:
+        type: string
+        default: ''
 permissions:
   contents: read
-
+  packages: read
+env:
+  GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  BUILD_VERSION: ${{ inputs.version || format('0.0.0-local.{0}.{1}', github.run_id, github.run_attempt) }}
 jobs:
+  title:
+    name: conventional PR title
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-latest
+    steps:
+      - shell: pwsh
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: |
+          if ($env:PR_TITLE -cnotmatch '^(feat|fix|perf|docs|test|ci|build|chore|style|refactor|revert)(\([^)]+\))?!?: .+') {
+            throw 'Use a Conventional Commit title; include ! for an incompatible change.'
+          }
   build:
     name: ${{ matrix.os }}
     runs-on: ${{ matrix.os }}
@@ -17,71 +33,100 @@ jobs:
       fail-fast: false
       matrix:
         os: [windows-latest, ubuntu-latest, macos-latest]
-
-    steps:
-      - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0 # tags are needed for versioning
-
-      - uses: actions/setup-dotnet@v4
-        with:
-          global-json-file: global.json
-
-      - name: Restore
-        run: dotnet restore PSLoom.slnx
-
-      - name: Build
-        run: dotnet build PSLoom.slnx --configuration Release --no-restore
-
-      # Includes the published-module integration tests, which start real pwsh processes against artifacts/modules.
-      - name: Test
-        run: dotnet test --solution PSLoom.slnx --configuration Release --no-build
-
-      # Import < 50 ms and the typical draft < 150 ms, medians of cold processes (section 6 of the design).
-      - name: Startup budgets
-        shell: pwsh
-        run: ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/typical.ps1 -AllowHarness Fixture
-
-      # The same profile with nothing staged, reported next to the gated one: the difference is what Shed buys.
-      - name: Eager draft (report only)
-        shell: pwsh
-        run: ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/eager.ps1 -AllowHarness Fixture -ReportOnly
-
-      - name: Verify packed SDK
-        shell: pwsh
-        run: |
-          $version = "0.0.0-local.$env:GITHUB_RUN_ID.$env:GITHUB_RUN_ATTEMPT"
-          ./build/Pack-Local.ps1 -Output artifacts/packages -Version $version
-          ./build/Test-BuildSdk.ps1 -Directory artifacts/packages -Version $version
-          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
-
-  benchmarks:
-    # One OS only: shared runners are noisy and BenchmarkDotNet is slow; the budgets are orders of magnitude apart from noise.
-    name: benchmark budgets
-    runs-on: ubuntu-latest
-
     steps:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
-
+          persist-credentials: false
       - uses: actions/setup-dotnet@v4
         with:
           global-json-file: global.json
-
-      - name: Run budgeted benchmarks
-        run: >-
-          dotnet run --configuration Release --project benchmarks/PSLoom.Benchmarks --
-          --filter '*StyleResolveBenchmarks*' '*HookDispatchBenchmarks*'
-          --exporters json
-
-      - name: Check budgets
+      - name: Pin PowerShell
         shell: pwsh
-        run: ./benchmarks/Assert-Budgets.ps1
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - name: Environment and release regression tests
+        shell: pwsh
+        run: |
+          $PSVersionTable
+          dotnet --info
+          ./.github/scripts/Test-Release.ps1
+          ./.github/scripts/Test-ReleaseHistory.ps1
+          pwsh -NoProfile -File .github/scripts/Test-Publication.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pwsh -NoProfile -File .github/scripts/Test-ReleasePullRequests.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          pwsh -NoProfile -File .github/scripts/Test-BudgetReporting.ps1
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Restore and build
+        shell: pwsh
+        run: |
+          dotnet build PSLoom.slnx -c Release "-p:VersionOverride=$env:BUILD_VERSION"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Test
+        shell: pwsh
+        run: |
+          dotnet test --solution PSLoom.slnx -c Release --no-build
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Startup measurements
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force artifacts/measurements | Out-Null
+          ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/typical.ps1 -AllowHarness Fixture -ReportOnly *>&1 | Tee-Object artifacts/measurements/startup.txt
+          ./benchmarks/Measure-Startup.ps1 -DraftPath ./benchmarks/drafts/eager.ps1 -AllowHarness Fixture -ReportOnly *>&1 | Tee-Object artifacts/measurements/eager.txt
+      - name: Verify packed SDK
+        shell: pwsh
+        run: |
+          ./build/Pack-Local.ps1 -Output artifacts/packages -Version $env:BUILD_VERSION
+          ./build/Test-BuildSdk.ps1 -Directory artifacts/packages -Version $env:BUILD_VERSION
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Read pinned consumer
+        id: consumer
+        shell: pwsh
+        run: |
+          $sha = (Get-Content .github/release.json -Raw | ConvertFrom-Json).reedSha
+          if ($sha -notmatch '^[0-9a-f]{40}$') { throw 'Reed integration requires an immutable SHA.' }
+          "sha=$sha" >> $env:GITHUB_OUTPUT
+      - uses: actions/checkout@v4
+        with:
+          repository: PSLoom/Reed
+          ref: ${{ steps.consumer.outputs.sha }}
+          path: artifacts/consumer
+          persist-credentials: false
+      - name: Test consumer against temporary SDK
+        shell: pwsh
+        env:
+          GITHUB_PACKAGES_TOKEN: ''
+        run: ./.github/scripts/Test-Consumer.ps1 -Version $env:BUILD_VERSION -Checkout artifacts/consumer
 
-      - name: Upload results
+      - uses: actions/upload-artifact@v4
         if: always()
-        uses: actions/upload-artifact@v4
+        with:
+          name: measurements-${{ matrix.os }}
+          path: artifacts/measurements
+  benchmarks:
+    name: benchmark reports
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - name: Run benchmarks
+        shell: pwsh
+        run: |
+          dotnet run -c Release --project benchmarks/PSLoom.Benchmarks -- --filter '*StyleResolveBenchmarks*' '*HookDispatchBenchmarks*' --exporters json
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Validate measurements
+        shell: pwsh
+        run: ./benchmarks/Assert-Budgets.ps1 -ReportOnly
+      - uses: actions/upload-artifact@v4
+        if: always()
         with:
           name: benchmark-results
           path: BenchmarkDotNet.Artifacts/results

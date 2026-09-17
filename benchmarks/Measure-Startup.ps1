@@ -49,6 +49,7 @@ $pwsh = (Get-Process -Id $PID).Path
 
 $probe = @'
 param($ModulesDirectory, $DraftPath, [string[]]$AllowHarness)
+$ErrorActionPreference = 'Stop'
 $env:LOOM_INTERACTIVE = '1'   # measure the interactive startup window: staged statements apply after the first prompt, not here
 $env:PSModulePath = $ModulesDirectory + [IO.Path]::PathSeparator + $env:PSModulePath
 $import = [Diagnostics.Stopwatch]::StartNew()
@@ -100,6 +101,9 @@ if ($DraftPath) {
 }
 
 foreach ($result in $results) {
+  if (-not [double]::IsFinite($result.MedianMs) -or $result.MedianMs -le 0) {
+    throw "Invalid startup measurement: $($result.Metric)"
+  }
   $result | Add-Member -NotePropertyName WithinBudget -NotePropertyValue ($result.MedianMs -le $result.BudgetMs * $Tolerance)
   if (-not $result.WithinBudget) { $failed = $true }
 }
