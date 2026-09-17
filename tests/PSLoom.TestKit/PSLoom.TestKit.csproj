@@ -1,12 +1,24 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
-    <IsPackable>false</IsPackable>
+    <VersionTagPrefix>psloom</VersionTagPrefix>
     <IsTestProject>false</IsTestProject>
   </PropertyGroup>
 
+  <PropertyGroup>
+    <Description>Test helpers for PSLoom modules: hosted runspaces, repository layout and the error id convention.</Description>
+    <PackageId>PSLoom.TestKit</PackageId>
+    <PackageTags>powershell;pwsh;psloom;testing</PackageTags>
+    <PackageReadmeFile Condition="Exists('README.md')">README.md</PackageReadmeFile>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />
+    <None Include="$(RepositoryRoot)LICENSE.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+
   <ItemGroup>
     <Using Include="System.Management.Automation" />
+    <InternalsVisibleTo Include="PSLoom.Tests" />
   </ItemGroup>
 
   <ItemGroup>

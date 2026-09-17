@@ -15,7 +15,7 @@
   Multiplier applied to every time budget to absorb machine noise. Default 1.2. Allocation budgets have no tolerance.
 
 .EXAMPLE
-  dotnet run -c Release --project benchmarks/PSLoom.Benchmarks -- --filter '*StyleResolve*' '*HookDispatch*' '*Completion*' --exporters json
+  dotnet run -c Release --project benchmarks/PSLoom.Benchmarks -- --filter '*StyleResolve*' '*HookDispatch*' --exporters json
   ./benchmarks/Assert-Budgets.ps1
 #>
 [CmdletBinding()]
@@ -30,9 +30,6 @@ $ErrorActionPreference = 'Stop'
 $budgets = @(
   [pscustomobject]@{ Benchmark = 'PSLoom.Benchmarks.Styles.StyleResolveBenchmarks.ResolveExactHit'; Label = 'Style resolve, cache hit'; MaxNanoseconds = 50; MaxBytes = 0 }
   [pscustomobject]@{ Benchmark = 'PSLoom.Benchmarks.Hooks.HookDispatchBenchmarks.DispatchWithoutHandlers'; Label = 'Hook dispatch, no handlers'; MaxNanoseconds = 10; MaxBytes = 0 }
-  [pscustomobject]@{ Benchmark = 'PSLoom.Benchmarks.Completion.CompletionBenchmarks.Subcommand'; Label = 'Reed Tab, subcommand'; MaxNanoseconds = 5e6; MaxBytes = $null }
-  [pscustomobject]@{ Benchmark = 'PSLoom.Benchmarks.Completion.CompletionBenchmarks.NestedSubcommand'; Label = 'Reed Tab, nested subcommand'; MaxNanoseconds = 5e6; MaxBytes = $null }
-  [pscustomobject]@{ Benchmark = 'PSLoom.Benchmarks.Completion.CompletionBenchmarks.Option'; Label = 'Reed Tab, option'; MaxNanoseconds = 5e6; MaxBytes = $null }
 )
 
 $reports = @(Get-ChildItem -Path $ResultsDirectory -Filter '*-report-full-compressed.json' -ErrorAction SilentlyContinue)

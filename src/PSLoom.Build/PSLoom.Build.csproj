@@ -1,0 +1,28 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+
+    <VersionTagPrefix>psloom</VersionTagPrefix>
+
+    <!-- A build-only package: MSBuild props and targets, no assembly, no dependencies. -->
+    <IncludeBuildOutput>false</IncludeBuildOutput>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <SuppressDependenciesWhenPacking>true</SuppressDependenciesWhenPacking>
+    <DevelopmentDependency>true</DevelopmentDependency>
+    <NoWarn>$(NoWarn);NU5128</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup>
+    <Description>MSBuild targets shared by PSLoom modules: tag-based versioning and the PowerShell module layout.</Description>
+    <PackageId>PSLoom.Build</PackageId>
+    <PackageTags>powershell; pwsh; psloom; msbuild; build</PackageTags>
+    <PackageReadmeFile Condition="Exists('README.md')">README.md</PackageReadmeFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="buildTransitive\**" Pack="true" PackagePath="buildTransitive\" />
+    <None Include="README.md" Pack="true" PackagePath="\" Condition="Exists('README.md')" />
+    <None Include="$(RepositoryRoot)LICENSE.md" Pack="true" PackagePath="\" Visible="false" />
+  </ItemGroup>
+</Project>

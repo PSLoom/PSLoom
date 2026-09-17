@@ -1,7 +1,6 @@
-# The typical profile with nothing staged. Measure-Startup.ps1 reports it next to typical.ps1, without gating: the difference between
-# the two is what Shed buys.
+# The same Fixture profile with all work applied inside the draft; report only.
 Invoke-Loom -Draft {
-  Thread Reed
+  Thread Fixture
 
   Style 'prompt:*' 'color' 'Cyan'
   Style 'prompt:*' 'symbol' '❯'
@@ -15,43 +14,15 @@ Invoke-Loom -Draft {
   Treadle gco { git checkout }
   Treadle ll { Get-ChildItem -Force }
 
-  Sley git -Alias g -Description 'Distributed version control' {
-    OptionGroup Common {
-      Option --verbose -Alias '-v'
-      Option --quiet -Alias '-q'
-    }
-
-    Option --version
-    Option --help -Alias '-h'
-
-    Command commit -Alias ci -Description 'Record changes' {
-      Use OptionGroup Common
-      Option --message -Alias '-m' { Argument text }
-      Option --amend
-      Argument files -Variadic
-    }
-
-    Command checkout -Alias co -Description 'Switch branches' {
-      Use OptionGroup Common
-      Option --branch -Alias '-b' { Argument name }
-      Argument target
-    }
-
-    Command log -Description 'Show commit logs' {
-      Option --oneline
-      Option --graph
-      Option --max-count -Alias '-n' { Argument count }
-    }
-
-    Command remote -Description 'Manage remotes' {
-      Command add { Argument name; Argument url }
-      Command remove -Alias rm { Argument name }
-    }
+  Box tools {
+    Item git
+    Item docker
+    Item kubectl
   }
 
-  Sley docker -Description 'Containers' {
-    Command run { Option --detach -Alias '-d'; Option --name { Argument name }; Argument image }
-    Command ps { Option --all -Alias '-a' }
+  Box later {
+    Item one
+    Item two
   }
 
   Set-Alias -Name k -Value kubectl -Scope Global

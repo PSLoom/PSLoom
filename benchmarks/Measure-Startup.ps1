@@ -19,7 +19,7 @@
 
 .PARAMETER DraftBudgetMilliseconds
   Budget for the median draft time over the import. Default 150, measured against benchmarks/drafts/typical.ps1: a profile
-  threading Reed, where most of the cost is PowerShell's own first import and first cmdlet invocations.
+  threading the Fixture harness, where most of the cost is PowerShell's own first import and first cmdlet invocations.
 
 .PARAMETER Tolerance
   Multiplier applied to every budget to absorb machine noise. Default 1.2.

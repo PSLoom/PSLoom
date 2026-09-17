@@ -32,7 +32,7 @@
       process, exactly as a user's profile would. The references below only make the solution build the modules first.
     -->
     <ProjectReference Include="..\..\src\PSLoom\PSLoom.csproj" ReferenceOutputAssembly="false" />
-    <ProjectReference Include="..\..\src\PSLoom.Reed\PSLoom.Reed.csproj" ReferenceOutputAssembly="false" />
+    <ProjectReference Include="..\PSLoom.Fixture\PSLoom.Fixture.csproj" ReferenceOutputAssembly="false" />
     <ProjectReference Include="..\PSLoom.TestKit\PSLoom.TestKit.csproj" />
   </ItemGroup>
 </Project>

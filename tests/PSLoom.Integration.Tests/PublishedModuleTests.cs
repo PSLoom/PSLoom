@@ -12,47 +12,8 @@ namespace PSLoom.Integration.Tests;
 ///   manifests, assembly loading across two module folders, and the engine actually exiting.
 /// </summary>
 public sealed class PublishedModuleTests {
-  [Fact]
-  public void ADraftThreadingReedCompletesThroughTabExpansion2() {
-    var result = PwshProcess.Run(
-      """
-      Import-Module PSLoom
-      Invoke-Loom {
-        Thread Reed
-        Treadle glog { git log --oneline }
-        Sley git -Alias g {
-          Command log { Option --graph }
-          Command commit -Alias ci {
-            Option --message -Alias '-m' { Argument text -Source { 'fix', 'feat' } }
-          }
-        }
-      }
-      function tab([string]$line) {
-        @((TabExpansion2 -inputScript $line -cursorColumn $line.Length).CompletionMatches | ForEach-Object CompletionText)
-      }
-      [pscustomobject]@{
-        errors = $Error.Count
-        subcommand = tab 'git co'
-        option = tab 'git commit --m'
-        alias = tab 'g ci --m'
-        source = tab 'git commit -m fe'
-        treadle = tab 'glog --g'
-      } | ConvertTo-Json -Compress
-      """);
-
-    var json = result.Json();
-
-    json.GetProperty("errors").GetInt32().ShouldBe(0, result.Error);
-    Strings(json, "subcommand").ShouldBe(["commit"]);
-    Strings(json, "option").ShouldBe(["--message"]);
-    Strings(json, "alias").ShouldBe(["--message"]);
-    Strings(json, "source").ShouldBe(["feat"]);
-    Strings(json, "treadle").ShouldBe(["--graph"]);
-  }
-
   [Theory]
   [InlineData("PSLoom")]
-  [InlineData("PSLoom.Reed")]
   public void EveryExportedCmdletIsTheManifestsList(string module) {
     var manifest = RepositoryLayout.ReadDataFile(Path.Combine(RepositoryLayout.GetPublishedModuleDirectory(module), $"{module}.psd1"));
     var declared = ((object[])manifest["CmdletsToExport"]!).Cast<string>().Order(StringComparer.OrdinalIgnoreCase);
@@ -65,29 +26,6 @@ public sealed class PublishedModuleTests {
        """);
 
     result.Json().EnumerateArray().Select(name => name.GetString()!).Order(StringComparer.OrdinalIgnoreCase).ShouldBe(declared, result.Error);
-  }
-
-  [Fact]
-  public void OnlyTheKernelsCopyOfWarpIsLoaded() {
-    var result = PwshProcess.Run(
-      """
-      Import-Module PSLoom
-      Invoke-Loom { Thread Reed }
-      $warp = @([AppDomain]::CurrentDomain.GetAssemblies() | Where-Object { $_.GetName().Name -eq 'Warp' })
-      [pscustomobject]@{
-        count = $warp.Count
-        location = Split-Path -Parent $warp[0].Location
-        kernel = (Get-Module PSLoom).ModuleBase
-        reed = [bool](Get-Module PSLoom.Reed)
-      } | ConvertTo-Json -Compress
-      """);
-
-    var json = result.Json();
-
-    json.GetProperty("reed").GetBoolean().ShouldBeTrue(result.Error);
-    json.GetProperty("count").GetInt32().ShouldBe(1);
-    Path.GetFullPath(json.GetProperty("location").GetString()!).TrimEnd(Path.DirectorySeparatorChar)
-      .ShouldBe(Path.GetFullPath(json.GetProperty("kernel").GetString()!).TrimEnd(Path.DirectorySeparatorChar));
   }
 
   [Fact]

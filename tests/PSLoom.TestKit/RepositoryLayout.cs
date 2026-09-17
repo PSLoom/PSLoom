@@ -11,12 +11,12 @@ namespace PSLoom.TestKit;
 ///   Locates repository files and published module layouts from a running test assembly.
 /// </summary>
 public static class RepositoryLayout {
-  private const string SOLUTION_FILE_NAME = "PSLoom.slnx";
+  private const string SOLUTION_FILE_PATTERN = "*.slnx";
 
   /// <summary>
-  ///   Gets the absolute path of the repository root, the directory containing the solution file.
+  ///   Gets the absolute path of the repository root, the nearest directory containing a solution file.
   /// </summary>
-  public static string Root { get; } = FindRoot();
+  public static string Root { get; } = FindRoot(AppContext.BaseDirectory);
 
   /// <summary>
   ///   Gets the absolute path of the directory <c>PublishModule</c> writes module layouts to.
@@ -65,13 +65,13 @@ public static class RepositoryLayout {
       : throw new InvalidOperationException($"'{path}' does not contain a hashtable literal.");
   }
 
-  private static string FindRoot() {
-    for (var directory = new DirectoryInfo(AppContext.BaseDirectory); directory is not null; directory = directory.Parent) {
-      if (File.Exists(Path.Combine(directory.FullName, SOLUTION_FILE_NAME))) {
+  internal static string FindRoot(string startDirectory) {
+    for (var directory = new DirectoryInfo(startDirectory); directory is not null; directory = directory.Parent) {
+      if (directory.EnumerateFiles(SOLUTION_FILE_PATTERN).Any()) {
         return directory.FullName;
       }
     }
 
-    throw new InvalidOperationException($"Could not find '{SOLUTION_FILE_NAME}' above '{AppContext.BaseDirectory}'.");
+    throw new InvalidOperationException($"Could not find '{SOLUTION_FILE_PATTERN}' above '{startDirectory}'.");
   }
 }

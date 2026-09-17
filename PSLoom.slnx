@@ -6,15 +6,9 @@
   <Folder Name="/Benchmarks/">
     <File Path="benchmarks/Assert-Budgets.ps1" />
     <File Path="benchmarks/drafts/eager.ps1" />
-    <File Path="benchmarks/drafts/staged.ps1" />
     <File Path="benchmarks/drafts/typical.ps1" />
     <File Path="benchmarks/Measure-Startup.ps1" />
     <Project Path="benchmarks/PSLoom.Benchmarks/PSLoom.Benchmarks.csproj" />
-  </Folder>
-  <Folder Name="/Docs/">
-    <File Path="docs/architecture.md" />
-    <File Path="docs/harness-authoring.md" />
-    <File Path="docs/invariants.md" />
   </Folder>
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
@@ -27,14 +21,13 @@
     <File Path="LICENSE.md" />
   </Folder>
   <Folder Name="/Source/">
-    <Project Path="src/PSLoom.Reed/PSLoom.Reed.csproj" />
+    <Project Path="src/PSLoom.Build/PSLoom.Build.csproj" />
     <Project Path="src/PSLoom/PSLoom.csproj" />
     <Project Path="src/Warp/Warp.csproj" />
   </Folder>
   <Folder Name="/Tests/">
     <Project Path="tests/PSLoom.Fixture/PSLoom.Fixture.csproj" />
     <Project Path="tests/PSLoom.Integration.Tests/PSLoom.Integration.Tests.csproj" />
-    <Project Path="tests/PSLoom.Reed.Tests/PSLoom.Reed.Tests.csproj" />
     <Project Path="tests/PSLoom.TestKit/PSLoom.TestKit.csproj" />
     <Project Path="tests/PSLoom.Tests/PSLoom.Tests.csproj" />
     <Project Path="tests/Warp.Tests/Warp.Tests.csproj" />
