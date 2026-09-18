@@ -1,0 +1,23 @@
+{
+  "schemaVersion": 1,
+  "bases": {
+    "ubuntu": "ubuntu:24.04@sha256:496754492fb28b4d3049432f2ca787449331e23fb14f0dd3fffea86bf5a93eb4",
+    "arch": "archlinux:base@sha256:421f8732de4338c86c204a2af2d62d650f46e3a667744ab8dc5e88853481a4aa"
+  },
+  "archSnapshot": "2026/09/17",
+  "sdk": {
+    "version": "10.0.400",
+    "url": "https://builds.dotnet.microsoft.com/dotnet/Sdk/10.0.400/dotnet-sdk-10.0.400-linux-x64.tar.gz",
+    "sha512": "1033977dd837150e0814cf0c5d5b17ceb63925fda7ba2158b47258a4bd7c048cf82eac3bc1166f3146f53124a3f5fba09db1de1260d2ce96399860303b404b48"
+  },
+  "powershell": {
+    "7.6.4": {
+      "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.4/powershell-7.6.4-linux-x64.tar.gz",
+      "sha256": "4471b5a36bfe86ec7af8525d36bb1cacba0128e7aac22d05cc064bc00e604721"
+    },
+    "7.6.6": {
+      "url": "https://github.com/PowerShell/PowerShell/releases/download/v7.6.6/powershell-7.6.6-linux-x64.tar.gz",
+      "sha256": "ddbc4a2d113bbd46d283cfedcbcd117a70caefd7673f41f2b4e0000badf103bc"
+    }
+  }
+}
