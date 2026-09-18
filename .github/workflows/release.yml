@@ -1,0 +1,207 @@
+name: Release
+on:
+  push:
+    branches: [develop, main]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Validate without tags, publication or PR changes
+        type: boolean
+        default: true
+      resume_tag:
+        description: Existing release tag to recover using its preserved artifacts
+        type: string
+        default: ''
+permissions:
+  contents: read
+  packages: read
+concurrency:
+  group: release-${{ github.repository }}
+  cancel-in-progress: false
+jobs:
+  plan:
+    runs-on: ubuntu-latest
+    outputs:
+      publish: ${{ steps.plan.outputs.publish }}
+      version: ${{ steps.plan.outputs.version }}
+      tag: ${{ steps.plan.outputs.tag }}
+      sha: ${{ steps.plan.outputs.sha }}
+      channel: ${{ steps.plan.outputs.channel }}
+      resume: ${{ steps.plan.outputs.resume }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - name: Compute release
+        id: plan
+        shell: pwsh
+        env:
+          CHANNEL: ${{ github.ref_name }}
+          RESUME_TAG: ${{ inputs.resume_tag }}
+        run: ./.github/scripts/Get-ReleasePlan.ps1 -Channel $env:CHANNEL -ResumeTag $env:RESUME_TAG
+  verify:
+    needs: plan
+    if: needs.plan.outputs.resume != 'true'
+    uses: ./.github/workflows/ci.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+  pack:
+    needs: [plan, verify]
+    if: needs.plan.outputs.publish == 'true' && needs.plan.outputs.resume != 'true'
+    runs-on: ubuntu-latest
+    env:
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+      RELEASE_SHA: ${{ needs.plan.outputs.sha }}
+      GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - name: Pack final version
+        shell: pwsh
+        run: |
+          ./build/Pack-Local.ps1 -Output artifacts/packages -Version $env:RELEASE_VERSION
+          ./.github/scripts/New-ReleaseAssets.ps1 -Version $env:RELEASE_VERSION
+          ./.github/scripts/New-ReleaseManifest.ps1 -Version $env:RELEASE_VERSION -Sha $env:RELEASE_SHA -Repository $env:GITHUB_REPOSITORY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/release/*
+          if-no-files-found: error
+  validate:
+    needs: [plan, pack]
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest, macos-latest]
+    runs-on: ${{ matrix.os }}
+    env:
+      RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+      GITHUB_PACKAGES_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ needs.plan.outputs.sha }}
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-assets
+          path: artifacts/release
+      - name: Test final packages
+        shell: pwsh
+        run: |
+          ./build/Test-Packages.ps1 -Directory artifacts/release -Version $env:RELEASE_VERSION
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./build/Test-BuildSdk.ps1 -Directory artifacts/release -Version $env:RELEASE_VERSION
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          ./.github/scripts/Test-PackedModule.ps1
+  publish:
+    needs: [plan, verify, pack, validate]
+    if: >-
+      always() && needs.plan.result == 'success' && needs.plan.outputs.publish == 'true' &&
+      vars.RELEASE_ENABLED == 'true' && inputs.dry_run != true &&
+      (needs.plan.outputs.resume == 'true' || (needs.verify.result == 'success' && needs.validate.result == 'success'))
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      packages: write
+    env:
+      GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Recovery uses corrected tooling, while the manifest/tag bind the original assets.
+          ref: ${{ needs.plan.outputs.resume == 'true' && github.sha || needs.plan.outputs.sha }}
+          fetch-depth: 0
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - uses: actions/download-artifact@v4
+        if: needs.plan.outputs.resume != 'true'
+        with:
+          name: release-assets
+          path: artifacts/release
+      - name: Publish or resume verified assets
+        shell: pwsh
+        env:
+          RESUME: ${{ needs.plan.outputs.resume }}
+        run: |
+          $parameters = @{ Repository = $env:GITHUB_REPOSITORY }
+          if ($env:RESUME -eq 'true') { $parameters.ResumeTag = $env:RELEASE_TAG }
+          ./.github/scripts/Publish-Release.ps1 @parameters
+  consumer-access:
+    needs: [plan, publish]
+    if: always() && needs.publish.result == 'success'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          owner: PSLoom
+          repositories: Reed
+          permission-contents: read
+          permission-actions: write
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - name: Verify access with Reed repository token
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          RELEASE_VERSION: ${{ needs.plan.outputs.version }}
+        run: ./.github/scripts/Wait-ConsumerProbe.ps1 -Version $env:RELEASE_VERSION
+      - name: Complete release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          RELEASE_TAG: ${{ needs.plan.outputs.tag }}
+          CHANNEL: ${{ needs.plan.outputs.channel }}
+        run: |
+          $arguments = @('release','edit',$env:RELEASE_TAG,'--repo',$env:GITHUB_REPOSITORY,'--draft=false')
+          if ($env:CHANNEL -eq 'develop') { $arguments += '--latest=false' }
+          gh @arguments
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+
+  follow-up:
+    needs: [plan, consumer-access]
+    if: always() && needs.consumer-access.result == 'success'
+    uses: ./.github/workflows/release-prs.yml
+    with:
+      version: ${{ needs.plan.outputs.version }}
+      channel: ${{ needs.plan.outputs.channel }}
+    secrets: inherit

@@ -27,6 +27,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <InternalsVisibleTo Include="PSLoom.Benchmarks" />
+  </ItemGroup>
+
+  <ItemGroup>
     <!-- The kernel module ships Warp.dll; harnesses bind to this copy. -->
     <ProjectReference Include="..\Warp\Warp.csproj" />
   </ItemGroup>

@@ -529,6 +529,9 @@ FodyWeavers.xsd
 ### VisualStudio Patch ###
 # Additional files built by Visual Studio
 build/
+!/build/
+/build/*
+!/build/*.ps1
 
 ### Docker ###
 containers/

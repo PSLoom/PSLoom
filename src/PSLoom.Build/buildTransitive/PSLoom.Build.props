@@ -1,0 +1,9 @@
+<Project>
+  <!--
+    Defaults for PSLoom modules. $(RepositoryRoot) comes from the consuming repository's Directory.Build.props, which is imported
+    before package props.
+  -->
+  <PropertyGroup>
+    <ArtifactsModulesDirectory Condition="'$(ArtifactsModulesDirectory)' == ''">$([MSBuild]::NormalizeDirectory('$(RepositoryRoot)', 'artifacts', 'modules'))</ArtifactsModulesDirectory>
+  </PropertyGroup>
+</Project>

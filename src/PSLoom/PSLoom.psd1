@@ -14,13 +14,19 @@
   VariablesToExport = @()
   AliasesToExport = @()
 
-  CmdletsToExport = @()
+  CmdletsToExport = @(
+    'Invoke-Loom', 'Measure-Loom', 'Get-Shed', 'Update-Harness',
+    'Register-Hook', 'Unregister-Hook', 'Get-Hook', 'Trace-Hook',
+    'Set-Style', 'Get-Style', 'Test-Style', 'Remove-Style', 'Get-StyleDefinition',
+    'Register-StyleWatcher', 'Unregister-StyleWatcher', 'Trace-Style',
+    'New-Treadle', 'Get-Treadle', 'Remove-Treadle'
+  )
 
   PrivateData = @{
     PSData = @{
       Tags = @('powershell', 'pwsh', 'psloom', 'loom', 'shell', 'zsh', 'fish')
-      LicenseUri = 'https://github.com/baliestri/PSLoom/blob/main/LICENSE.md'
-      ProjectUri = 'https://github.com/baliestri/PSLoom'
+      LicenseUri = 'https://github.com/PSLoom/PSLoom/blob/main/LICENSE.md'
+      ProjectUri = 'https://github.com/PSLoom/PSLoom'
     }
   }
 }

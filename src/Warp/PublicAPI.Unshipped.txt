@@ -1,1 +1,207 @@
 #nullable enable
+abstract PSLoom.Warp.Dsl.LoomVerb.Weave() -> void
+override PSLoom.Warp.Hosting.HarnessIdentity.ToString() -> string!
+override PSLoom.Warp.Storage.CreelPath.Equals(object? obj) -> bool
+override PSLoom.Warp.Storage.CreelPath.GetHashCode() -> int
+override PSLoom.Warp.Storage.CreelPath.ToString() -> string!
+override PSLoom.Warp.Styles.StyleChange.GetHashCode() -> int
+override sealed PSLoom.Warp.Dsl.LoomVerb.BeginProcessing() -> void
+override sealed PSLoom.Warp.Dsl.LoomVerb.EndProcessing() -> void
+override sealed PSLoom.Warp.Dsl.LoomVerb.ProcessRecord() -> void
+PSLoom.Warp.Diagnostics.IDiagnosticLog<TEntry>
+PSLoom.Warp.Diagnostics.IDiagnosticLog<TEntry>.Capacity.get -> int
+PSLoom.Warp.Diagnostics.IDiagnosticLog<TEntry>.Clear() -> void
+PSLoom.Warp.Diagnostics.IDiagnosticLog<TEntry>.Count.get -> int
+PSLoom.Warp.Diagnostics.IDiagnosticLog<TEntry>.Record(TEntry! entry) -> void
+PSLoom.Warp.Diagnostics.IDiagnosticLog<TEntry>.Snapshot(int? last = null) -> System.Collections.Generic.IReadOnlyList<TEntry!>!
+PSLoom.Warp.Diagnostics.IDiagnostics
+PSLoom.Warp.Diagnostics.IDiagnostics.CreateLog<TEntry>(int capacity = 200) -> PSLoom.Warp.Diagnostics.IDiagnosticLog<TEntry!>!
+PSLoom.Warp.Dsl.DraftFrame
+PSLoom.Warp.Dsl.DraftScope
+PSLoom.Warp.Dsl.DslScope
+PSLoom.Warp.Dsl.DslScope.DslScope() -> void
+PSLoom.Warp.Dsl.IDslFrame<TScope>
+PSLoom.Warp.Dsl.IDslRunner
+PSLoom.Warp.Dsl.IDslRunner.Run<TScope>(PSLoom.Warp.Dsl.IDslFrame<TScope!>! frame, System.Management.Automation.ScriptBlock! body) -> System.Collections.Generic.IReadOnlyList<System.Management.Automation.ErrorRecord!>!
+PSLoom.Warp.Dsl.ILoomContext
+PSLoom.Warp.Dsl.ILoomContext.Frame<TFrame>() -> TFrame?
+PSLoom.Warp.Dsl.ILoomContext.IsDraft.get -> bool
+PSLoom.Warp.Dsl.ILoomContext.RequireFrame<TFrame>() -> TFrame!
+PSLoom.Warp.Dsl.ILoomContext.RunScoped<TScope>(PSLoom.Warp.Dsl.IDslFrame<TScope!>! frame, System.Management.Automation.ScriptBlock? body) -> void
+PSLoom.Warp.Dsl.IRevertibleVerb
+PSLoom.Warp.Dsl.IRevertibleVerb.Revert(PSLoom.Warp.Dsl.ReweaveEntry! previous) -> void
+PSLoom.Warp.Dsl.IVerbRegistry
+PSLoom.Warp.Dsl.IVerbRegistry.Add<TVerb>() -> void
+PSLoom.Warp.Dsl.LoomVerb
+PSLoom.Warp.Dsl.LoomVerb.Loom.get -> PSLoom.Warp.Dsl.ILoomContext!
+PSLoom.Warp.Dsl.LoomVerb.LoomVerb() -> void
+PSLoom.Warp.Dsl.LoomVerb.ReportError(PSLoom.Warp.PowerShellException! exception) -> void
+PSLoom.Warp.Dsl.LoomVerb.ReportError(System.Management.Automation.ErrorRecord! errorRecord) -> void
+PSLoom.Warp.Dsl.LoomVerbAttribute
+PSLoom.Warp.Dsl.LoomVerbAttribute.LoomVerbAttribute(string! name, params System.Type![]! scopes) -> void
+PSLoom.Warp.Dsl.LoomVerbAttribute.Name.get -> string!
+PSLoom.Warp.Dsl.LoomVerbAttribute.Reweave.get -> PSLoom.Warp.Dsl.ReweaveBehavior
+PSLoom.Warp.Dsl.LoomVerbAttribute.Reweave.set -> void
+PSLoom.Warp.Dsl.LoomVerbAttribute.Scopes.get -> System.Collections.Generic.IReadOnlyList<System.Type!>!
+PSLoom.Warp.Dsl.OpensScopeAttribute
+PSLoom.Warp.Dsl.OpensScopeAttribute.OpensScopeAttribute(System.Type! scope) -> void
+PSLoom.Warp.Dsl.OpensScopeAttribute.Scope.get -> System.Type!
+PSLoom.Warp.Dsl.ReweaveBehavior
+PSLoom.Warp.Dsl.ReweaveBehavior.Additive = 1 -> PSLoom.Warp.Dsl.ReweaveBehavior
+PSLoom.Warp.Dsl.ReweaveBehavior.Replay = 0 -> PSLoom.Warp.Dsl.ReweaveBehavior
+PSLoom.Warp.Dsl.ReweaveEntry
+PSLoom.Warp.Dsl.ReweaveEntry.BoundParameters.get -> System.Collections.Generic.IReadOnlyDictionary<string!, object?>!
+PSLoom.Warp.Dsl.ReweaveEntry.Fingerprint.get -> System.UInt128
+PSLoom.Warp.Dsl.ReweaveEntry.Key.get -> string!
+PSLoom.Warp.Dsl.ReweaveEntry.VerbName.get -> string!
+PSLoom.Warp.Dsl.ReweaveKeyAttribute
+PSLoom.Warp.Dsl.ReweaveKeyAttribute.ReweaveKeyAttribute() -> void
+PSLoom.Warp.Hooks.CommandNotFoundInvocation
+PSLoom.Warp.Hooks.CommandNotFoundInvocation.CommandName.get -> string!
+PSLoom.Warp.Hooks.CommandNotFoundInvocation.EventArgs.get -> System.Management.Automation.CommandLookupEventArgs!
+PSLoom.Warp.Hooks.DirectoryChangedInvocation
+PSLoom.Warp.Hooks.DirectoryChangedInvocation.EventArgs.get -> System.Management.Automation.LocationChangedEventArgs!
+PSLoom.Warp.Hooks.HookHandler
+PSLoom.Warp.Hooks.HookInvocation
+PSLoom.Warp.Hooks.HookInvocation.Kind.get -> PSLoom.Warp.Hooks.HookKind
+PSLoom.Warp.Hooks.HookInvocation.Runspace.get -> System.Management.Automation.Runspaces.Runspace!
+PSLoom.Warp.Hooks.HookKind
+PSLoom.Warp.Hooks.HookKind.CommandNotFound = 3 -> PSLoom.Warp.Hooks.HookKind
+PSLoom.Warp.Hooks.HookKind.DirectoryChanged = 0 -> PSLoom.Warp.Hooks.HookKind
+PSLoom.Warp.Hooks.HookKind.Idle = 4 -> PSLoom.Warp.Hooks.HookKind
+PSLoom.Warp.Hooks.HookKind.PreExecute = 2 -> PSLoom.Warp.Hooks.HookKind
+PSLoom.Warp.Hooks.HookKind.PrePrompt = 1 -> PSLoom.Warp.Hooks.HookKind
+PSLoom.Warp.Hooks.HookKind.SessionExiting = 6 -> PSLoom.Warp.Hooks.HookKind
+PSLoom.Warp.Hooks.HookKind.SessionStarting = 5 -> PSLoom.Warp.Hooks.HookKind
+PSLoom.Warp.Hooks.IHookBus
+PSLoom.Warp.Hooks.IHookBus.Subscribe(PSLoom.Warp.Hooks.HookKind kind, PSLoom.Warp.Hooks.HookHandler! handler, string? name = null) -> System.IDisposable!
+PSLoom.Warp.Hooks.PreExecuteInvocation
+PSLoom.Warp.Hooks.PreExecuteInvocation.CommandLine.get -> string!
+PSLoom.Warp.Hooks.PreExecuteInvocation.CursorPosition.get -> int
+PSLoom.Warp.Hosting.HarnessAttribute
+PSLoom.Warp.Hosting.HarnessAttribute.Description.get -> string?
+PSLoom.Warp.Hosting.HarnessAttribute.Description.set -> void
+PSLoom.Warp.Hosting.HarnessAttribute.HarnessAttribute(string! name) -> void
+PSLoom.Warp.Hosting.HarnessAttribute.Name.get -> string!
+PSLoom.Warp.Hosting.HarnessHost
+PSLoom.Warp.Hosting.HarnessIdentity
+PSLoom.Warp.Hosting.HarnessIdentity.CompiledWarpVersion.get -> System.Version!
+PSLoom.Warp.Hosting.HarnessIdentity.Description.get -> string?
+PSLoom.Warp.Hosting.HarnessIdentity.ModuleName.get -> string!
+PSLoom.Warp.Hosting.HarnessIdentity.ModuleVersion.get -> System.Version!
+PSLoom.Warp.Hosting.HarnessIdentity.Name.get -> string!
+PSLoom.Warp.Hosting.IHarness
+PSLoom.Warp.Hosting.IHarness.Compose(PSLoom.Warp.Hosting.IHarnessBuilder! builder) -> void
+PSLoom.Warp.Hosting.IHarnessBuilder
+PSLoom.Warp.Hosting.IHarnessContext
+PSLoom.Warp.Hosting.IHarnessContext.Dsl.get -> PSLoom.Warp.Dsl.IDslRunner!
+PSLoom.Warp.Hosting.IHarnessDirectory
+PSLoom.Warp.Hosting.IHarnessDirectory.Publish<TApi>(TApi! api) -> void
+PSLoom.Warp.Hosting.IHarnessDirectory.TryGet<TApi>(out TApi? api) -> bool
+PSLoom.Warp.Hosting.IHarnessServices
+PSLoom.Warp.Hosting.IHarnessServices.Diagnostics.get -> PSLoom.Warp.Diagnostics.IDiagnostics!
+PSLoom.Warp.Hosting.IHarnessServices.Harnesses.get -> PSLoom.Warp.Hosting.IHarnessDirectory!
+PSLoom.Warp.Hosting.IHarnessServices.Hooks.get -> PSLoom.Warp.Hooks.IHookBus!
+PSLoom.Warp.Hosting.IHarnessServices.Identity.get -> PSLoom.Warp.Hosting.HarnessIdentity!
+PSLoom.Warp.Hosting.IHarnessServices.PSReadLine.get -> PSLoom.Warp.Hosting.IPSReadLineProbe!
+PSLoom.Warp.Hosting.IHarnessServices.Storage.get -> PSLoom.Warp.Storage.IHarnessStorage!
+PSLoom.Warp.Hosting.IHarnessServices.Styles.get -> PSLoom.Warp.Styles.IStyleStore!
+PSLoom.Warp.Hosting.IHarnessServices.Treadles.get -> PSLoom.Warp.Treadles.ITreadleCatalog!
+PSLoom.Warp.Hosting.IHarnessServices.Verbs.get -> PSLoom.Warp.Dsl.IVerbRegistry!
+PSLoom.Warp.Hosting.IPSReadLineProbe
+PSLoom.Warp.Hosting.IPSReadLineProbe.HasOptionParameter(string! parameterName) -> bool
+PSLoom.Warp.Hosting.IPSReadLineProbe.IsLoaded.get -> bool
+PSLoom.Warp.Hosting.WarpContract
+PSLoom.Warp.PowerShellException
+PSLoom.Warp.PowerShellException.ErrorCategory.get -> System.Management.Automation.ErrorCategory
+PSLoom.Warp.PowerShellException.ErrorId.get -> string!
+PSLoom.Warp.PowerShellException.PowerShellException(string! errorId, System.Management.Automation.ErrorCategory errorCategory, string! message, object? targetObject = null, System.Exception? innerException = null) -> void
+PSLoom.Warp.PowerShellException.TargetObject.get -> object?
+PSLoom.Warp.Storage.CreelPath
+PSLoom.Warp.Storage.CreelPath.Combine(string! relativePath) -> PSLoom.Warp.Storage.CreelPath
+PSLoom.Warp.Storage.CreelPath.CreelPath() -> void
+PSLoom.Warp.Storage.CreelPath.Equals(PSLoom.Warp.Storage.CreelPath other) -> bool
+PSLoom.Warp.Storage.CreelPath.FullPath.get -> string!
+PSLoom.Warp.Storage.CreelPath.IsDefault.get -> bool
+PSLoom.Warp.Storage.CreelPath.IsRoot.get -> bool
+PSLoom.Warp.Storage.CreelPath.Name.get -> string!
+PSLoom.Warp.Storage.CreelPath.Parent.get -> PSLoom.Warp.Storage.CreelPath?
+PSLoom.Warp.Storage.CreelPath.RelativePath.get -> string!
+PSLoom.Warp.Storage.CreelPathException
+PSLoom.Warp.Storage.CreelPathException.RelativePath.get -> string!
+PSLoom.Warp.Storage.CreelPathException.Root.get -> string!
+PSLoom.Warp.Storage.CreelPathException.Violation.get -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation.Escape = 2 -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation.InvalidCharacters = 1 -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation.LinkEscape = 3 -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.CreelPathViolation.Rooted = 0 -> PSLoom.Warp.Storage.CreelPathViolation
+PSLoom.Warp.Storage.IHarnessStorage
+PSLoom.Warp.Storage.IHarnessStorage.Resolve(string! relativePath) -> PSLoom.Warp.Storage.CreelPath
+PSLoom.Warp.Storage.IHarnessStorage.Root.get -> PSLoom.Warp.Storage.CreelPath
+PSLoom.Warp.Styles.IStyleStore
+PSLoom.Warp.Styles.IStyleStore.Remove(string! context, string! name) -> PSLoom.Warp.Styles.StyleWriteResult!
+PSLoom.Warp.Styles.IStyleStore.Resolve(string! context, string! name) -> PSLoom.Warp.Styles.StyleDefinition?
+PSLoom.Warp.Styles.IStyleStore.Set(string! context, string! name, object? value) -> PSLoom.Warp.Styles.StyleWriteResult!
+PSLoom.Warp.Styles.IStyleStore.TryGet<T>(string! context, string! name, out T value) -> bool
+PSLoom.Warp.Styles.IStyleStore.Watch(string! context, string! name, PSLoom.Warp.Styles.StyleWatcher! watcher, bool replay = false) -> System.IDisposable!
+PSLoom.Warp.Styles.IStyleStore.WatchPattern(string! contextPattern, string! name, PSLoom.Warp.Styles.StyleWatcher! watcher, bool replay = false) -> System.IDisposable!
+PSLoom.Warp.Styles.StyleChange
+PSLoom.Warp.Styles.StyleChange.Context.get -> string!
+PSLoom.Warp.Styles.StyleChange.Context.init -> void
+PSLoom.Warp.Styles.StyleChange.Deconstruct(out string! Context, out string! Name, out object? OldValue, out object? NewValue) -> void
+PSLoom.Warp.Styles.StyleChange.Equals(PSLoom.Warp.Styles.StyleChange other) -> bool
+PSLoom.Warp.Styles.StyleChange.Name.get -> string!
+PSLoom.Warp.Styles.StyleChange.Name.init -> void
+PSLoom.Warp.Styles.StyleChange.NewValue.get -> object?
+PSLoom.Warp.Styles.StyleChange.NewValue.init -> void
+PSLoom.Warp.Styles.StyleChange.OldValue.get -> object?
+PSLoom.Warp.Styles.StyleChange.OldValue.init -> void
+PSLoom.Warp.Styles.StyleChange.StyleChange() -> void
+PSLoom.Warp.Styles.StyleChange.StyleChange(string! Context, string! Name, object? OldValue, object? NewValue) -> void
+PSLoom.Warp.Styles.StyleDefinition
+PSLoom.Warp.Styles.StyleDefinition.Context.get -> string!
+PSLoom.Warp.Styles.StyleDefinition.Name.get -> string!
+PSLoom.Warp.Styles.StyleDefinition.Sequence.get -> long
+PSLoom.Warp.Styles.StyleDefinition.Value.get -> object?
+PSLoom.Warp.Styles.StyleWatcher
+PSLoom.Warp.Styles.StyleWriteResult
+PSLoom.Warp.Styles.StyleWriteResult.Applied.get -> bool
+PSLoom.Warp.Styles.StyleWriteResult.Succeeded.get -> bool
+PSLoom.Warp.Styles.StyleWriteResult.WatcherFailures.get -> System.Collections.Generic.IReadOnlyList<System.Exception!>!
+PSLoom.Warp.Treadles.ITreadleCatalog
+PSLoom.Warp.Treadles.ITreadleCatalog.All.get -> System.Collections.Generic.IReadOnlyCollection<PSLoom.Warp.Treadles.TreadleDefinition!>!
+PSLoom.Warp.Treadles.ITreadleCatalog.Changed -> System.EventHandler<PSLoom.Warp.Treadles.TreadleChangedEventArgs!>?
+PSLoom.Warp.Treadles.ITreadleCatalog.TryGet(string! name, out PSLoom.Warp.Treadles.TreadleDefinition? definition) -> bool
+PSLoom.Warp.Treadles.TreadleChangedEventArgs
+PSLoom.Warp.Treadles.TreadleChangedEventArgs.Current.get -> PSLoom.Warp.Treadles.TreadleDefinition?
+PSLoom.Warp.Treadles.TreadleChangedEventArgs.Name.get -> string!
+PSLoom.Warp.Treadles.TreadleChangedEventArgs.Previous.get -> PSLoom.Warp.Treadles.TreadleDefinition?
+PSLoom.Warp.Treadles.TreadleDefinition
+PSLoom.Warp.Treadles.TreadleDefinition.BakedTokens.get -> System.Collections.Generic.IReadOnlyList<string!>!
+PSLoom.Warp.Treadles.TreadleDefinition.Name.get -> string!
+PSLoom.Warp.Treadles.TreadleDefinition.TargetCommand.get -> string!
+PSLoom.Warp.WarpException
+static PSLoom.Warp.Hosting.HarnessHost.Current<THarness>() -> PSLoom.Warp.Hosting.IHarnessContext!
+static PSLoom.Warp.Hosting.HarnessHost.Register<THarness>() -> void
+static PSLoom.Warp.Hosting.WarpContract.GetCompiledVersion(System.Reflection.Assembly! assembly) -> System.Version?
+static PSLoom.Warp.Hosting.WarpContract.IsCompatible(System.Version? compiled) -> bool
+static PSLoom.Warp.Hosting.WarpContract.Version.get -> System.Version!
+static PSLoom.Warp.Storage.CreelPath.implicit operator string!(PSLoom.Warp.Storage.CreelPath path) -> string!
+static PSLoom.Warp.Storage.CreelPath.operator !=(PSLoom.Warp.Storage.CreelPath left, PSLoom.Warp.Storage.CreelPath right) -> bool
+static PSLoom.Warp.Storage.CreelPath.operator /(PSLoom.Warp.Storage.CreelPath path, string! relativePath) -> PSLoom.Warp.Storage.CreelPath
+static PSLoom.Warp.Storage.CreelPath.operator ==(PSLoom.Warp.Storage.CreelPath left, PSLoom.Warp.Storage.CreelPath right) -> bool
+static PSLoom.Warp.Styles.StyleChange.operator !=(PSLoom.Warp.Styles.StyleChange left, PSLoom.Warp.Styles.StyleChange right) -> bool
+static PSLoom.Warp.Styles.StyleChange.operator ==(PSLoom.Warp.Styles.StyleChange left, PSLoom.Warp.Styles.StyleChange right) -> bool
+virtual PSLoom.Warp.Hooks.HookHandler.Invoke(PSLoom.Warp.Hooks.HookInvocation! invocation) -> void
+virtual PSLoom.Warp.PowerShellException.ToErrorRecord() -> System.Management.Automation.ErrorRecord!
+virtual PSLoom.Warp.Styles.StyleWatcher.Invoke(PSLoom.Warp.Styles.StyleChange change) -> void
+~override PSLoom.Warp.Styles.StyleChange.Equals(object obj) -> bool
+~override PSLoom.Warp.Styles.StyleChange.ToString() -> string
+PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Applied = 2 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Armed = 1 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Failed = 4 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Pending = 0 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Skipped = 3 -> PSLoom.Warp.Dsl.ShedState
+PSLoom.Warp.Dsl.ShedState.Superseded = 5 -> PSLoom.Warp.Dsl.ShedState

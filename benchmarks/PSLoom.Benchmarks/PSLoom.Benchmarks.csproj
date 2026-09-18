@@ -13,6 +13,5 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\PSLoom\PSLoom.csproj" />
-    <ProjectReference Include="..\..\src\PSLoom.Reed\PSLoom.Reed.csproj" />
   </ItemGroup>
 </Project>

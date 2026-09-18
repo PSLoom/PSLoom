@@ -18,31 +18,58 @@
   Optional script file containing an `Invoke-Loom -Draft { ... }` call to time after the import.
 
 .PARAMETER DraftBudgetMilliseconds
-  Budget for the median draft time over the import. Default 100.
+  Budget for the median draft time over the import. Default 150, measured against benchmarks/drafts/typical.ps1: a profile
+  threading the Fixture harness, where most of the cost is PowerShell's own first import and first cmdlet invocations.
 
 .PARAMETER Tolerance
   Multiplier applied to every budget to absorb machine noise. Default 1.2.
+
+.PARAMETER AllowHarness
+  Test-only harness names (for example Fixture) added to the session's first-party allowlist through reflection before
+  the draft is timed, so steady-state drafts can be measured with a test harness. Not a product feature.
+
+.PARAMETER ReportOnly
+  Print the medians without failing when a budget is exceeded.
 #>
 [CmdletBinding()]
 param(
   [ValidateRange(1, 1000)][int]$Iterations = 10,
   [double]$ImportBudgetMilliseconds = 50,
   [string]$DraftPath,
-  [double]$DraftBudgetMilliseconds = 100,
-  [double]$Tolerance = 1.2
+  [double]$DraftBudgetMilliseconds = 150,
+  [double]$Tolerance = 1.2,
+  [string[]]$AllowHarness = @(),
+  [switch]$ReportOnly
 )
 
 $ErrorActionPreference = 'Stop'
 
 $modulesDirectory = Join-Path $PSScriptRoot '..' 'artifacts' 'modules' | Resolve-Path
 $pwsh = (Get-Process -Id $PID).Path
+# A .NET tool runs inside dotnet, which needs the PowerShell entry assembly
+# before the shell arguments. Preserve the exact runtime used by this process.
+$pwshArguments = @()
+if ([IO.Path]::GetFileNameWithoutExtension($pwsh) -eq 'dotnet') {
+  $entryAssembly = Join-Path $PSHOME 'pwsh.dll'
+  if (-not (Test-Path -LiteralPath $entryAssembly)) { throw "PowerShell entry assembly missing: $entryAssembly" }
+  $pwshArguments = @($entryAssembly)
+}
 
 $probe = @'
-param($ModulesDirectory, $DraftPath)
+param($ModulesDirectory, $DraftPath, [string[]]$AllowHarness)
+$ErrorActionPreference = 'Stop'
+$env:LOOM_INTERACTIVE = '1'   # measure the interactive startup window: staged statements apply after the first prompt, not here
 $env:PSModulePath = $ModulesDirectory + [IO.Path]::PathSeparator + $env:PSModulePath
 $import = [Diagnostics.Stopwatch]::StartNew()
 Import-Module PSLoom
 $import.Stop()
+if ($AllowHarness) {
+  $sessionType = (Get-Module PSLoom).ImplementingAssembly.GetType('PSLoom.Runtime.Loom.LoomSession', $true)
+  $perRunspace = $sessionType.GetProperty('PerRunspace').GetValue($null)
+  $session = $perRunspace.GetType().GetMethod('ForCurrent').Invoke($perRunspace, @())
+  $firstParty = $sessionType.GetProperty('FirstParty').GetValue($session)
+  foreach ($name in $AllowHarness) { $null = $firstParty.Add($name) }
+}
 $draft = 0.0
 if ($DraftPath) {
   $sw = [Diagnostics.Stopwatch]::StartNew()
@@ -60,13 +87,13 @@ function Get-Median([double[]]$Values) {
 }
 
 $encoded = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes(
-    "& { $probe } -ModulesDirectory '$modulesDirectory' -DraftPath '$DraftPath'"))
+    "& { $probe } -ModulesDirectory '$modulesDirectory' -DraftPath '$DraftPath' -AllowHarness @($(($AllowHarness | ForEach-Object { "'$_'" }) -join ','))"))
 
 $imports = [Collections.Generic.List[double]]::new()
 $drafts = [Collections.Generic.List[double]]::new()
 
 for ($i = 0; $i -lt $Iterations; $i++) {
-  $output = & $pwsh -NoProfile -NonInteractive -EncodedCommand $encoded
+  $output = & $pwsh @pwshArguments -NoProfile -NonInteractive -EncodedCommand $encoded
   if ($LASTEXITCODE -ne 0) { throw "Probe process failed with exit code $LASTEXITCODE." }
   $parts = ($output | Select-Object -Last 1) -split ';'
   $imports.Add([double]::Parse($parts[0], [cultureinfo]::InvariantCulture))
@@ -82,13 +109,16 @@ if ($DraftPath) {
 }
 
 foreach ($result in $results) {
+  if (-not [double]::IsFinite($result.MedianMs) -or $result.MedianMs -le 0) {
+    throw "Invalid startup measurement: $($result.Metric)"
+  }
   $result | Add-Member -NotePropertyName WithinBudget -NotePropertyValue ($result.MedianMs -le $result.BudgetMs * $Tolerance)
   if (-not $result.WithinBudget) { $failed = $true }
 }
 
 $results | Format-Table -AutoSize | Out-Host
 
-if ($failed) {
+if ($failed -and -not $ReportOnly) {
   Write-Error 'Startup budget exceeded.' -ErrorAction Continue
   exit 1
 }

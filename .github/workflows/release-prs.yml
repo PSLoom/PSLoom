@@ -1,0 +1,160 @@
+name: Release pull requests
+on:
+  workflow_call:
+    inputs:
+      version:
+        type: string
+        required: true
+      channel:
+        type: string
+        required: true
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Completed release version
+        type: string
+        required: true
+      channel:
+        type: choice
+        options: [develop, main]
+        required: true
+permissions:
+  contents: read
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Require completed release
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ inputs.version }}
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          if ($env:CHANNEL -notin @('develop','main')) { throw 'Invalid channel.' }
+          if ($env:VERSION -notmatch '^0\.\d+\.\d+(?:-alpha\.[1-9]\d*)?$') { throw 'Invalid version.' }
+          if (($env:CHANNEL -eq 'main') -eq $env:VERSION.Contains('-')) { throw 'Channel mismatch.' }
+          $release = gh release view "psloom/v$env:VERSION" --repo $env:GITHUB_REPOSITORY --json isDraft
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (($release | ConvertFrom-Json).isDraft) { throw 'Release is incomplete.' }
+  dependency:
+    needs: validate
+    runs-on: ubuntu-latest
+    concurrency:
+      group: reed-dependency-${{ inputs.channel }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: automation
+          persist-credentials: false
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+          owner: PSLoom
+          repositories: Reed
+      - uses: actions/checkout@v4
+        with:
+          repository: PSLoom/Reed
+          ref: ${{ inputs.channel }}
+          fetch-depth: 0
+          path: consumer
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: automation/global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./automation/.github/scripts/Install-PowerShell.ps1
+      - name: Update SDK dependency
+        shell: pwsh
+        working-directory: consumer
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
+        run: ../automation/.github/scripts/Update-ReleasePullRequests.ps1 -Mode dependency -Channel $env:CHANNEL -Version $env:VERSION -Repository PSLoom/Reed
+
+  consumer-promotion:
+    needs: [validate, dependency]
+    if: inputs.channel == 'main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: reed-promotion
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: automation
+          persist-credentials: false
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+          owner: PSLoom
+          repositories: Reed
+      - uses: actions/checkout@v4
+        with:
+          repository: PSLoom/Reed
+          ref: develop
+          fetch-depth: 0
+          path: consumer
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: automation/global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./automation/.github/scripts/Install-PowerShell.ps1
+      - name: Prepare stable Reed promotion
+        shell: pwsh
+        working-directory: consumer
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+        run: ../automation/.github/scripts/Update-ReleasePullRequests.ps1 -Mode promotion -Repository PSLoom/Reed
+  branches:
+    needs: validate
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        mode: [promotion, sync]
+    concurrency:
+      group: branches-${{ github.repository }}-${{ matrix.mode }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/create-github-app-token@v2
+        id: app
+        with:
+          app-id: ${{ vars.RELEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+          permission-workflows: write
+      - uses: actions/checkout@v4
+        with:
+          ref: develop
+          fetch-depth: 0
+          token: ${{ steps.app.outputs.token }}
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+      - name: Pin PowerShell
+        shell: pwsh
+        run: ./.github/scripts/Install-PowerShell.ps1
+      - name: Maintain promotion and synchronization
+        if: matrix.mode == 'promotion' || inputs.channel == 'main'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ steps.app.outputs.token }}
+          MODE: ${{ matrix.mode }}
+        run: ./.github/scripts/Update-ReleasePullRequests.ps1 -Mode $env:MODE -Repository $env:GITHUB_REPOSITORY

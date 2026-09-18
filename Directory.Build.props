@@ -10,7 +10,6 @@
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
 
     <RepositoryRoot>$(MSBuildThisFileDirectory)</RepositoryRoot>
-    <ArtifactsModulesDirectory>$(RepositoryRoot)artifacts\modules\</ArtifactsModulesDirectory>
   </PropertyGroup>
 
   <PropertyGroup Condition="'$(Configuration)'=='Debug'">
@@ -28,11 +27,12 @@
     <Copyright>Copyright (c) $([System.DateTime]::Now.Year) Bruno Sales &lt;me@baliestri.dev&gt;</Copyright>
     <PackageProjectUrl>https://github.com/PSLoom/PSLoom</PackageProjectUrl>
     <PackageLicenseFile>LICENSE.md</PackageLicenseFile>
-    <RepositoryUrl>https://github.com/baliestri/PSLoom</RepositoryUrl>
+    <RepositoryUrl>https://github.com/PSLoom/PSLoom</RepositoryUrl>
     <RepositoryType>git</RepositoryType>
   </PropertyGroup>
 
   <ItemGroup>
     <InternalsVisibleTo Include="$(AssemblyName).Tests" />
   </ItemGroup>
+  <Import Project="$(RepositoryRoot)src\PSLoom.Build\buildTransitive\PSLoom.Build.props" />
 </Project>
