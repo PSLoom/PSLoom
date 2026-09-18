@@ -9,14 +9,16 @@ $remote = Join-Path $work 'remote'
 $feed = Join-Path $work 'feed'
 $null = New-Item -ItemType Directory $local,$remote,$feed
 $global:publicationFixture = @{
-  sha=('a'*40); tag=$false; release=$null; pushes=0; failAt=2; remote=$remote; feed=$feed; completed=$false
+  sha=('a'*40); checkoutSha=('a'*40); tag=$false; release=$null; pushes=0; failAt=2; remote=$remote; feed=$feed; completed=$false
+  missingStatus=403; denyDownloads=$false; tagSha=('a'*40)
 }
 function global:git {
   $global:LASTEXITCODE = 0
-  if ($args[0] -eq 'rev-parse') { return $global:publicationFixture.sha }
+  if ($args[0] -eq 'rev-parse') { return $global:publicationFixture.checkoutSha }
   if ($args[0] -eq 'ls-remote') {
     if ($args[1] -eq '--heads' -or $global:publicationFixture.tag) {
-      return $global:publicationFixture.sha + [char]9 + $args[3]
+      $sha = if ($args[1] -eq '--heads') { $global:publicationFixture.sha } else { $global:publicationFixture.tagSha }
+      return $sha + [char]9 + $args[3]
     }
     return
   }
@@ -62,9 +64,9 @@ function global:Invoke-RestMethod {
 function global:Invoke-WebRequest {
   param($Uri,$Headers,$OutFile)
   $file = Join-Path $global:publicationFixture.feed ([uri]$Uri).Segments[-1]
-  if (-not (Test-Path $file)) {
-    $response = [Net.Http.HttpResponseMessage]::new([Net.HttpStatusCode]::NotFound)
-    throw [Microsoft.PowerShell.Commands.HttpResponseException]::new('Not found', $response)
+  if ($global:publicationFixture.denyDownloads -or -not (Test-Path $file)) {
+    $response = [Net.Http.HttpResponseMessage]::new([Net.HttpStatusCode]$global:publicationFixture.missingStatus)
+    throw [Microsoft.PowerShell.Commands.HttpResponseException]::new('Feed request rejected', $response)
   }
   Copy-Item $file $OutFile
 }
@@ -88,18 +90,46 @@ try {
   if (-not $failed -or $global:publicationFixture.completed) { throw 'Partial publication was not preserved as a draft.' }
   $before = @(Get-ChildItem $feed -File).Count
   $global:publicationFixture.failAt = -1
+  $global:publicationFixture.checkoutSha = 'b'*40
+  $global:publicationFixture.missingStatus = 404
   $resume = Join-Path $work 'resume'
   & "$PSScriptRoot/Publish-Release.ps1" -Repository $repository -Directory $resume -ResumeTag "$($config.prefix)/v$version"
   if ($config.prefix -eq 'reed' -and -not $global:publicationFixture.completed) { throw 'Recovery did not complete.' }
   if ($config.prefix -eq 'psloom' -and $global:publicationFixture.completed) { throw 'Kernel completed before consumer verification.' }
   $expectedPushes = $config.packages.Count + 1
   if ($global:publicationFixture.pushes -ne $expectedPushes) { throw 'Recovery republished an existing package.' }
+  $global:publicationFixture.tagSha = 'c'*40
+  $failed=$false
+  try { & "$PSScriptRoot/Publish-Release.ps1" -Repository $repository -Directory (Join-Path $work 'wrong-tag') -ResumeTag "$($config.prefix)/v$version" }
+  catch { if ($_ -notmatch 'Existing tag points to another commit') { throw }; $failed=$true }
+  if (-not $failed) { throw 'Recovery accepted a moved tag.' }
+  $global:publicationFixture.tagSha = $global:publicationFixture.sha
+  $global:publicationFixture.checkoutSha = $global:publicationFixture.sha
+  $global:publicationFixture.denyDownloads = $true
+  $global:publicationFixture.missingStatus = 401
+  $pushes = $global:publicationFixture.pushes
+  $failed=$false
+  try { & "$PSScriptRoot/Publish-Release.ps1" -Repository $repository -Directory $local }
+  catch { if ([int]$_.Exception.Response.StatusCode -ne 401) { throw }; $failed=$true }
+  if (-not $failed -or $global:publicationFixture.pushes -ne $pushes) { throw 'Invalid credentials triggered an upload.' }
+  $global:publicationFixture.missingStatus = 403
+  $global:publicationFixture.failAt = $global:publicationFixture.pushes + 1
+  $failed=$false
+  try { & "$PSScriptRoot/Publish-Release.ps1" -Repository $repository -Directory $local }
+  catch { if ($_ -notmatch 'dotnet failed') { throw }; $failed=$true }
+  if (-not $failed) { throw 'Denied preflight hid an upload failure.' }
+  $global:publicationFixture.failAt = -1
+  $failed=$false
+  try { & "$PSScriptRoot/Publish-Release.ps1" -Repository $repository -Directory $local }
+  catch { if ([int]$_.Exception.Response.StatusCode -ne 403) { throw }; $failed=$true }
+  if (-not $failed -or $global:publicationFixture.completed) { throw 'Publication succeeded without post-upload verification.' }
+  $global:publicationFixture.denyDownloads = $false
   $corrupt = Get-ChildItem $feed -File | Select-Object -First 1
   [IO.File]::WriteAllText($corrupt.FullName,'corrupt package')
   $failed=$false
   try { & "$PSScriptRoot/Publish-Release.ps1" -Repository $repository -Directory $local } catch { $failed=$true }
   if (-not $failed) { throw 'Divergent package was accepted.' }
-  Write-Host "Passed publication interruption, durable recovery, existing-package reuse and corruption rejection ($before packages preserved)."
+  Write-Host "Passed denied preflight, publication interruption, recovery with corrected tooling, tag integrity, authentication failures, post-upload verification and corruption rejection ($before packages preserved)."
 }
 finally {
   foreach ($name in @('git','gh','dotnet','Invoke-RestMethod','Invoke-WebRequest')) { Remove-Item "Function:\global:$name" -ErrorAction SilentlyContinue }

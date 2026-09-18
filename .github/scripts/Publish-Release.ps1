@@ -16,7 +16,9 @@ $config = Get-Content "$PSScriptRoot/../release.json" -Raw | ConvertFrom-Json
 if ($manifest.repository -cne $Repository -or $manifest.tag -cne "$($config.prefix)/v$($manifest.version)" -or
     ($ResumeTag -and $manifest.tag -cne $ResumeTag)) { throw 'Manifest repository/tag mismatch.' }
 if (@(Compare-Object @($config.packages) @($manifest.packages)).Count) { throw 'Manifest package set mismatch.' }
-if ((Invoke-Checked git @('rev-parse','HEAD')).Trim() -cne $manifest.sha) { throw 'Checkout does not match release commit.' }
+# Recovery runs the corrected publisher from the dispatch commit, not the old release.
+# The remote tag below must still match the immutable manifest commit.
+if (-not $ResumeTag -and (Invoke-Checked git @('rev-parse','HEAD')).Trim() -cne $manifest.sha) { throw 'Checkout does not match release commit.' }
 $refs = @(Invoke-Checked git @('ls-remote','--tags','origin',"refs/tags/$($manifest.tag)","refs/tags/$($manifest.tag)^{}"))
 if (-not $refs.Count) {
   if ($ResumeTag) { throw 'Recovery tag is missing.' }
@@ -61,7 +63,17 @@ foreach ($id in $config.packages) {
   $download = Join-Path ([IO.Path]::GetTempPath()) ([guid]::NewGuid().ToString('N') + '.nupkg')
   $exists = $true
   try { Invoke-WebRequest $uri -Headers $headers -OutFile $download }
-  catch { if ([int]$_.Exception.Response.StatusCode -eq 404) { $exists = $false } else { throw } }
+  catch {
+    $status = [int]$_.Exception.Response.StatusCode
+    if ($status -eq 404) { $exists = $false }
+    elseif ($status -eq 403) {
+      # A denied preflight does not prove absence. Let the authenticated push
+      # decide; duplicate versions and permission failures must still fail.
+      Write-Warning "Cannot inspect $id before publication (HTTP 403). Attempting upload; successful download and content verification remain required."
+      $exists = $false
+    }
+    else { throw }
+  }
   if ($exists) { Assert-PackageEqual $package $download; continue }
   Invoke-Checked dotnet @('nuget','push',$package,'--source','https://nuget.pkg.github.com/PSLoom/index.json','--api-key',$env:GH_TOKEN) | Out-Host
   $verified = $false

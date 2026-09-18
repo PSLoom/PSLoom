@@ -47,6 +47,10 @@ To resume a partially published release:
 
 Use reed/v... for Reed and --ref main for stable releases. Recovery downloads the preserved draft assets, checks the tag/commit and manifest, verifies already published packages and sends only missing packages. Existing package contents must match every ZIP entry; timestamps/compression differences alone are tolerated. Missing or changed content stops recovery. If artifacts were lost before the draft was populated, investigate using the retained Actions artifact; recovery never silently rebuilds the same version.
 
+Kernel recovery runs publication tooling from the workflow dispatch commit, so a publisher fix can recover an older release. The remote tag must still point to the original manifest commit and the preserved assets must pass their checksum checks. After deploying a publisher fix, dispatch recovery from the updated branch instead of rerunning the old failed run, which retains its original workflow and scripts.
+
+The publisher checks for an existing package before uploading. A 403 at this initial download is inconclusive; the kernel publisher attempts the authenticated upload without skipping duplicates. Upload failures still stop publication, and every successful upload must be downloaded and compared with the preserved package. A 401 or any denied post-upload verification remains fatal. This does not grant Reed access or bypass package permissions.
+
 Reed access is checked before completing the kernel release. The kernel feed job and consumer-access job are separate: a failed access probe leaves uploaded packages and draft assets intact. Configure access, then rerun failed jobs or use recovery. RELEASE_ENABLED must still be true.
 
 For a failed post-release PR update, rerun only the independent workflow:

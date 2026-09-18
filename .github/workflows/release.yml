@@ -132,7 +132,8 @@ jobs:
     steps:
       - uses: actions/checkout@v4
         with:
-          ref: ${{ needs.plan.outputs.sha }}
+          # Recovery uses corrected tooling, while the manifest/tag bind the original assets.
+          ref: ${{ needs.plan.outputs.resume == 'true' && github.sha || needs.plan.outputs.sha }}
           fetch-depth: 0
       - uses: actions/setup-dotnet@v4
         with:
