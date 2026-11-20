@@ -11,10 +11,14 @@
     <File Path="LICENSE.md" />
     <File Path="Version.props" />
   </Folder>
+  <Folder Name="/eng/">
+    <Project Path="eng/tools/PSLoom.ManifestTool/PSLoom.ManifestTool.csproj" />
+  </Folder>
   <Folder Name="/src/">
     <Project Path="src/PSLoom/PSLoom.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PSLoom.ManifestTool.Tests/PSLoom.ManifestTool.Tests.csproj" />
     <Project Path="tests/PSLoom.TestKit/PSLoom.TestKit.csproj" />
     <Project Path="tests/PSLoom.Tests/PSLoom.Tests.csproj" />
   </Folder>
