@@ -1,4 +1,6 @@
 #nullable enable
+PSLoom.Cmdlets.GetHarnessCmdlet
+PSLoom.Cmdlets.GetHarnessCmdlet.GetHarnessCmdlet() -> void
 PSLoom.HarnessContractException
 PSLoom.HarnessContractException.CompiledAgainst.get -> System.Version!
 PSLoom.HarnessContractException.HarnessName.get -> string!

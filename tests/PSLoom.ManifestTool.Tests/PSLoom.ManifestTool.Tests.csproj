@@ -1,9 +1,5 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
-    <PackageReference Include="System.Management.Automation" />
-  </ItemGroup>
-
-  <ItemGroup>
     <ProjectReference Include="../../eng/tools/PSLoom.ManifestTool/PSLoom.ManifestTool.csproj" />
     <ProjectReference Include="../PSLoom.TestKit/PSLoom.TestKit.csproj" />
   </ItemGroup>
