@@ -33,6 +33,10 @@ if ($modules.Count -eq 0) {
 $null = New-Item -ItemType Directory -Force -Path $Destination
 $Destination = (Resolve-Path -LiteralPath $Destination).Path
 
+# The manifest of a harness names the base in RequiredModules; it has to resolve while the package is validated.
+$modulePaths = @(& (Join-Path $PSScriptRoot 'Get-ModulePath.ps1') -Path $Path)
+$env:PSModulePath = ($modulePaths + $env:PSModulePath) -join [System.IO.Path]::PathSeparator
+
 foreach ($module in $modules) {
   Compress-PSResource -Path $module.FullName -DestinationPath $Destination
 }

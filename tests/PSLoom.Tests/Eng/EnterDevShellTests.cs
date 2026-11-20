@@ -25,6 +25,8 @@ public sealed class EnterDevShellTests {
     try {
       var copy = Path.Combine(directory.FullName, "Enter-DevShell.ps1");
       File.Copy(Script, copy);
+      File.Copy(Path.Combine(Root, "eng", "Get-ModulePath.ps1"),
+        Path.Combine(directory.FullName, "Get-ModulePath.ps1"));
 
       var result = PwshProcess.RunFile(copy, ["-Path", directory.FullName, "-Command", "'unreachable'"]);
 

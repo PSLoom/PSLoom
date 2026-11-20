@@ -3,8 +3,9 @@
 .SYNOPSIS
   Opens a pwsh session without a profile in which the modules built in this workspace resolve by name.
 .DESCRIPTION
-  Puts artifacts/modules of the given repository and of the base repository at the front of PSModulePath, so
-  that Import-Module and RequiredModules resolve the same way they do for installed modules.
+  Puts artifacts/modules of the given repository and of the neighbor repositories pinned by its .ref files at
+  the front of PSModulePath, so that Import-Module and RequiredModules resolve the same way they do for
+  installed modules.
 .PARAMETER Path
   The root of the repository being worked on; the current directory when omitted.
 .PARAMETER Command
@@ -19,16 +20,7 @@ param(
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
 
-$candidates = @(
-  Join-Path $Path 'artifacts/modules'
-  Join-Path $PSScriptRoot '../artifacts/modules'
-)
-$moduleDirectories = @(
-  $candidates |
-    ForEach-Object { [System.IO.Path]::GetFullPath($_) } |
-    Select-Object -Unique |
-    Where-Object { Test-Path -LiteralPath $_ }
-)
+$moduleDirectories = @(& (Join-Path $PSScriptRoot 'Get-ModulePath.ps1') -Path $Path)
 
 if ($moduleDirectories.Count -eq 0) {
   throw 'No built modules were found. Run dotnet build first.'
