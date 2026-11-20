@@ -9,6 +9,7 @@
     <File Path="dotnet-tools.json" />
     <File Path="global.json" />
     <File Path="LICENSE.md" />
+    <File Path="psloom.sync.psd1" />
     <File Path="Version.props" />
   </Folder>
   <Folder Name="/eng/">
