@@ -1,0 +1,8 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <ContractMajor>0</ContractMajor>
+    <AssemblyVersion>$(ContractMajor).0.0.0</AssemblyVersion>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <Description>The shell-ergonomics layer PowerShell never shipped with</Description>
+  </PropertyGroup>
+</Project>
