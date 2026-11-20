@@ -96,6 +96,16 @@ pwsh -NoProfile -File eng/Sync-Common.ps1
 
 CI runs the same script with `-Check` and fails when a copy has drifted. So does `dotnet test`.
 
+## Harnesses
+
+A harness is a separate repository built against this one, checked out next to it. It imports
+`eng/build/Harness.props` and `eng/build/Harness.targets`, which give its module project the reference to the
+base (never copied to the output) and the `RequiredModules` entry, and give its test projects the test kit. A
+`PSLoom.ref` file in the harness holds the ref of this repository it is built against.
+
+A change to `eng/build`, to the scripts in `eng/`, or to `tests/PSLoom.TestKit` is a change to every harness.
+Run the tests of a harness against it before merging.
+
 ## Commits and branches
 
 - Commits follow [Conventional Commits](https://www.conventionalcommits.org). The changelog is generated
@@ -119,11 +129,11 @@ pwsh -NoProfile -File eng/New-ModulePackage.ps1
 
 The Gallery job is skipped until the repository is set up for it. All three settings are needed:
 
-| Setting                                    | Where                                 | Purpose                                                       |
-| :----------------------------------------- | :------------------------------------ | :------------------------------------------------------------ |
-| Variable `PUBLISH_PSGALLERY` set to `true` | Repository variables                  | Opens the Gallery job. Without it the job is skipped.         |
-| Secret `PSGALLERY_API_KEY`                 | Repository or `psgallery` environment | The API key the job publishes with.                           |
-| Environment `psgallery`                    | Repository environments               | Where the job runs; add required reviewers to gate a publish. |
+| Setting                                    | Where                                               | Purpose                                                       |
+| :----------------------------------------- | :-------------------------------------------------- | :------------------------------------------------------------ |
+| Variable `PUBLISH_PSGALLERY` set to `true` | Repository variables                                | Opens the Gallery job. Without it the job is skipped.         |
+| Secret `PSGALLERY_API_KEY`                 | Organization, repository or `psgallery` environment | The API key the job publishes with.                           |
+| Environment `psgallery`                    | Repository environments                             | Where the job runs; add required reviewers to gate a publish. |
 
 Set `PUBLISH_PSGALLERY` as a repository variable, not as a variable of the environment. A published version
 cannot be replaced, only unlisted.
