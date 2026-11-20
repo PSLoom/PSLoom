@@ -35,6 +35,26 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
 
+      # A harness is built against the repositories named by its <Repository>.ref files, checked out as siblings.
+      - name: Check out the neighbor repositories at their pinned refs
+        run: |
+          shopt -s nullglob
+          for pin in *.ref; do
+            name="${pin%.ref}"
+            ref="$(tr -d '[:space:]' < "$pin")"
+            git clone --quiet "https://github.com/$GITHUB_REPOSITORY_OWNER/$name.git" "../$name"
+            git -C "../$name" checkout --quiet --detach "$ref"
+          done
+
+      # The shared scripts and build files live in the base: here, or in the sibling checkout of a harness.
+      - name: Locate the shared engineering directory
+        run: |
+          if [ -d eng/build ]; then
+            echo "ENG=eng" >> "$GITHUB_ENV"
+          else
+            echo "ENG=../PSLoom/eng" >> "$GITHUB_ENV"
+          fi
+
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
@@ -42,7 +62,7 @@ jobs:
       # The tests import the built module in a real pwsh, which has to be the one the module is built for.
       - name: Install the PowerShell the module is built for
         run: |
-          version="$(sed -n 's/.*Include="System.Management.Automation" Version="\([^"]*\)".*/\1/p' eng/build/Packages.props)"
+          version="$(sed -n 's/.*Include="System.Management.Automation" Version="\([^"]*\)".*/\1/p' "$ENG/build/Packages.props")"
           dotnet tool install --global PowerShell --version "$version"
           if [ "$RUNNER_OS" = "Windows" ]; then
             echo "$USERPROFILE\\.dotnet\\tools" >> "$GITHUB_PATH"
@@ -57,4 +77,4 @@ jobs:
       - run: dotnet test --no-build --configuration Release
 
       - name: Check the files shared between repositories
-        run: pwsh -NoProfile -File eng/Sync-Common.ps1 -Check
+        run: pwsh -NoProfile -File "$ENG/Sync-Common.ps1" -Check

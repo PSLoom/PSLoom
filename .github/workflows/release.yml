@@ -41,13 +41,33 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # A harness is built against the repositories named by its <Repository>.ref files, checked out as siblings.
+      - name: Check out the neighbor repositories at their pinned refs
+        run: |
+          shopt -s nullglob
+          for pin in *.ref; do
+            name="${pin%.ref}"
+            ref="$(tr -d '[:space:]' < "$pin")"
+            git clone --quiet "https://github.com/$GITHUB_REPOSITORY_OWNER/$name.git" "../$name"
+            git -C "../$name" checkout --quiet --detach "$ref"
+          done
+
+      # The shared scripts and build files live in the base: here, or in the sibling checkout of a harness.
+      - name: Locate the shared engineering directory
+        run: |
+          if [ -d eng/build ]; then
+            echo "ENG=eng" >> "$GITHUB_ENV"
+          else
+            echo "ENG=../PSLoom/eng" >> "$GITHUB_ENV"
+          fi
+
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
 
       - name: Install the PowerShell the module is built for
         run: |
-          version="$(sed -n 's/.*Include="System.Management.Automation" Version="\([^"]*\)".*/\1/p' eng/build/Packages.props)"
+          version="$(sed -n 's/.*Include="System.Management.Automation" Version="\([^"]*\)".*/\1/p' "$ENG/build/Packages.props")"
           dotnet tool install --global PowerShell --version "$version"
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
@@ -58,7 +78,7 @@ jobs:
       - run: dotnet test --no-build --configuration Release
 
       - name: Pack the modules
-        run: pwsh -NoProfile -File eng/New-ModulePackage.ps1 -Destination release-artifacts
+        run: pwsh -NoProfile -File "$ENG/New-ModulePackage.ps1" -Destination release-artifacts
 
       - name: Create the GitHub release
         env:
@@ -75,7 +95,7 @@ jobs:
           esac
           # The notes are the section of the version in the changelog. A tag pushed by hand for a version
           # the changelog does not have falls back to generated notes.
-          if pwsh -NoProfile -File eng/Get-ChangelogSection.ps1 -Version "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/notes.md"; then
+          if pwsh -NoProfile -File "$ENG/Get-ChangelogSection.ps1" -Version "${GITHUB_REF_NAME#v}" > "$RUNNER_TEMP/notes.md"; then
             flags+=(--notes-file "$RUNNER_TEMP/notes.md")
           else
             flags+=(--generate-notes)
@@ -94,6 +114,26 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      # A harness is built against the repositories named by its <Repository>.ref files, checked out as siblings.
+      - name: Check out the neighbor repositories at their pinned refs
+        run: |
+          shopt -s nullglob
+          for pin in *.ref; do
+            name="${pin%.ref}"
+            ref="$(tr -d '[:space:]' < "$pin")"
+            git clone --quiet "https://github.com/$GITHUB_REPOSITORY_OWNER/$name.git" "../$name"
+            git -C "../$name" checkout --quiet --detach "$ref"
+          done
+
+      # The shared scripts and build files live in the base: here, or in the sibling checkout of a harness.
+      - name: Locate the shared engineering directory
+        run: |
+          if [ -d eng/build ]; then
+            echo "ENG=eng" >> "$GITHUB_ENV"
+          else
+            echo "ENG=../PSLoom/eng" >> "$GITHUB_ENV"
+          fi
+
       - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
         with:
           global-json-file: global.json
@@ -101,7 +141,7 @@ jobs:
       # Publishing a .nupkg needs the PSResourceGet that ships with this PowerShell.
       - name: Install the PowerShell the module is built for
         run: |
-          version="$(sed -n 's/.*Include="System.Management.Automation" Version="\([^"]*\)".*/\1/p' eng/build/Packages.props)"
+          version="$(sed -n 's/.*Include="System.Management.Automation" Version="\([^"]*\)".*/\1/p' "$ENG/build/Packages.props")"
           dotnet tool install --global PowerShell --version "$version"
           echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
 
