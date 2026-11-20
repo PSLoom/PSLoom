@@ -1,5 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
   <ItemGroup>
     <ProjectReference Include="../../src/PSLoom/PSLoom.csproj" />
+    <ProjectReference Include="../PSLoom.TestKit/PSLoom.TestKit.csproj" />
   </ItemGroup>
 </Project>

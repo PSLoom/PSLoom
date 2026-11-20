@@ -15,6 +15,7 @@
     <Project Path="src/PSLoom/PSLoom.csproj" />
   </Folder>
   <Folder Name="/tests/">
+    <Project Path="tests/PSLoom.TestKit/PSLoom.TestKit.csproj" />
     <Project Path="tests/PSLoom.Tests/PSLoom.Tests.csproj" />
   </Folder>
 </Solution>
