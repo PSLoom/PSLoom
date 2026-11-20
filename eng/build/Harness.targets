@@ -1,0 +1,14 @@
+<Project>
+  <!-- A harness compiles against the base next to it and never ships a copy of it. -->
+  <ItemGroup Condition="'$(IsPowerShellModule)' == 'true'">
+    <ProjectReference Include="$(PSLoomEngDir)../src/PSLoom/PSLoom.csproj" Private="false" />
+    <PackageReference Include="System.Management.Automation" PrivateAssets="all" />
+    <RequiredPSModule Include="PSLoom" MinimumVersion="$(PSLoomBaseModuleVersion)" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(IsPSLoomTestProject)' == 'true'">
+    <ProjectReference Include="$(PSLoomEngDir)../tests/PSLoom.TestKit/PSLoom.TestKit.csproj" />
+  </ItemGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)Common.targets" />
+</Project>
