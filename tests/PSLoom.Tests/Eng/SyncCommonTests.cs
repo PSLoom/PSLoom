@@ -89,6 +89,48 @@ public sealed class SyncCommonTests {
     Assert.True(result.ExitCode == 0, result.StandardOutput);
   }
 
+  [Fact]
+  public void TemplatesGetTheValuesOfTheRepository() {
+    var directory = Directory.CreateTempSubdirectory("psloom-sync-");
+
+    try {
+      File.WriteAllText(Path.Combine(directory.FullName, "psloom.sync.psd1"), CONFIG);
+
+      var result = PwshProcess.RunFile(Script, ["-Path", directory.FullName]);
+      var cliff = File.ReadAllText(Path.Combine(directory.FullName, "cliff.toml"));
+
+      Assert.Equal(0, result.ExitCode);
+      Assert.Contains("owner = \"Acme\"", cliff, StringComparison.Ordinal);
+      Assert.Contains("repo = \"Widget\"", cliff, StringComparison.Ordinal);
+      Assert.Contains("# Widget Changelog", cliff, StringComparison.Ordinal);
+      Assert.DoesNotContain("{{Owner}}", cliff, StringComparison.Ordinal);
+      Assert.DoesNotContain("{{Repo}}", cliff, StringComparison.Ordinal);
+      Assert.DoesNotContain("{{Title}}", cliff, StringComparison.Ordinal);
+    }
+    finally {
+      directory.Delete(true);
+    }
+  }
+
+  [Theory]
+  [InlineData("ci.yml")]
+  [InlineData("prepare-release.yml")]
+  [InlineData("release.yml")]
+  public void WorkflowsAreWrittenUnderDotGithub(string workflow) {
+    var directory = Directory.CreateTempSubdirectory("psloom-sync-");
+
+    try {
+      File.WriteAllText(Path.Combine(directory.FullName, "psloom.sync.psd1"), CONFIG);
+
+      PwshProcess.RunFile(Script, ["-Path", directory.FullName]);
+
+      Assert.True(File.Exists(Path.Combine(directory.FullName, ".github", "workflows", workflow)));
+    }
+    finally {
+      directory.Delete(true);
+    }
+  }
+
   private static string Normalize(string text)
     => text.Replace("\r\n", "\n", StringComparison.Ordinal);
 }

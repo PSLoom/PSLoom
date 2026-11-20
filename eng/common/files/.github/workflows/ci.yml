@@ -1,0 +1,60 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+  # Called by prepare-release.yml to validate a release candidate before it is merged.
+  workflow_call:
+    inputs:
+      ref:
+        description: The commit to check; the ref of the calling run when empty.
+        type: string
+        default: ""
+
+concurrency:
+  group: ci-${{ inputs.ref || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-24.04, windows-2025]
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      # The tests import the built module in a real pwsh, which has to be the one the module is built for.
+      - name: Install the PowerShell the module is built for
+        run: |
+          version="$(sed -n 's/.*Include="System.Management.Automation" Version="\([^"]*\)".*/\1/p' eng/build/Packages.props)"
+          dotnet tool install --global PowerShell --version "$version"
+          if [ "$RUNNER_OS" = "Windows" ]; then
+            echo "$USERPROFILE\\.dotnet\\tools" >> "$GITHUB_PATH"
+          else
+            echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+          fi
+
+      - run: dotnet restore --locked-mode
+
+      - run: dotnet build --no-restore --configuration Release
+
+      - run: dotnet test --no-build --configuration Release
+
+      - name: Check the files shared between repositories
+        run: pwsh -NoProfile -File eng/Sync-Common.ps1 -Check
