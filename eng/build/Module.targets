@@ -1,0 +1,25 @@
+<Project>
+  <PropertyGroup>
+    <ModuleName Condition="'$(ModuleName)' == ''">$(AssemblyName)</ModuleName>
+    <ModuleManifestTemplate Condition="'$(ModuleManifestTemplate)' == ''">$(MSBuildProjectDirectory)/$(ModuleName).psd1</ModuleManifestTemplate>
+    <ModuleOutputDir>$(ArtifactsModulesDir)$(ModuleName)/</ModuleOutputDir>
+    <_ManifestToolProject>$(PSLoomEngDir)tools/PSLoom.ManifestTool/PSLoom.ManifestTool.csproj</_ManifestToolProject>
+  </PropertyGroup>
+
+  <!--
+    Copies the module assembly to artifacts/modules/<Module>/ and writes its manifest next to it. The cmdlet
+    list and the version come from the build, so the manifest cannot drift from the code.
+  -->
+  <Target Name="AssembleModule" AfterTargets="Build">
+    <Error Condition="!Exists('$(ModuleManifestTemplate)')"
+           Text="The module manifest template '$(ModuleManifestTemplate)' does not exist." />
+
+    <MSBuild Projects="$(_ManifestToolProject)" Targets="Build">
+      <Output TaskParameter="TargetOutputs" ItemName="_ManifestToolAssembly" />
+    </MSBuild>
+
+    <MakeDir Directories="$(ModuleOutputDir)" />
+    <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModuleOutputDir)" SkipUnchangedFiles="true" />
+    <Exec Command="dotnet &quot;@(_ManifestToolAssembly)&quot; --assembly &quot;$(TargetPath)&quot; --template &quot;$(ModuleManifestTemplate)&quot; --output &quot;$(ModuleOutputDir)$(ModuleName).psd1&quot; --version &quot;$(Version)&quot;" />
+  </Target>
+</Project>

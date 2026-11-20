@@ -1,0 +1,30 @@
+<Solution>
+  <Folder Name="/Solution Items/">
+    <File Path=".editorconfig" />
+    <File Path=".gitattributes" />
+    <File Path=".gitignore" />
+    <File Path="CHANGELOG.md" />
+    <File Path="cliff.toml" />
+    <File Path="CONTRIBUTING.md" />
+    <File Path="Directory.Build.props" />
+    <File Path="Directory.Build.targets" />
+    <File Path="Directory.Packages.props" />
+    <File Path="dotnet-tools.json" />
+    <File Path="global.json" />
+    <File Path="LICENSE.md" />
+    <File Path="psloom.sync.psd1" />
+    <File Path="README.md" />
+    <File Path="Version.props" />
+  </Folder>
+  <Folder Name="/eng/">
+    <Project Path="eng/tools/PSLoom.ManifestTool/PSLoom.ManifestTool.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/PSLoom/PSLoom.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/PSLoom.ManifestTool.Tests/PSLoom.ManifestTool.Tests.csproj" />
+    <Project Path="tests/PSLoom.TestKit/PSLoom.TestKit.csproj" />
+    <Project Path="tests/PSLoom.Tests/PSLoom.Tests.csproj" />
+  </Folder>
+</Solution>
