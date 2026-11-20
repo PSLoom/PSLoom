@@ -1,0 +1,34 @@
+<Project>
+  <PropertyGroup>
+    <PSLoomEngDir>$([MSBuild]::NormalizeDirectory('$(MSBuildThisFileDirectory)', '..'))</PSLoomEngDir>
+    <ArtifactsModulesDir>$(RepoRoot)artifacts/modules/</ArtifactsModulesDir>
+
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <CodeAnalysisTreatWarningsAsErrors>true</CodeAnalysisTreatWarningsAsErrors>
+
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <CentralPackageTransitivePinningEnabled>true</CentralPackageTransitivePinningEnabled>
+    <RestorePackagesWithLockFile>true</RestorePackagesWithLockFile>
+
+    <IsPSLoomTestProject Condition="$(MSBuildProjectName.EndsWith('.Tests'))">true</IsPSLoomTestProject>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(IsPSLoomTestProject)' == 'true'">
+    <OutputType>Exe</OutputType>
+    <IsPackable>false</IsPackable>
+  </PropertyGroup>
+
+  <ItemGroup Condition="'$(IsPSLoomTestProject)' == 'true'">
+    <PackageReference Include="xunit.v3.mtp-v2" />
+    <Using Include="Xunit" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="$(AssemblyName).Tests" />
+  </ItemGroup>
+</Project>

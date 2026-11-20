@@ -1,0 +1,8 @@
+<Project>
+  <PropertyGroup>
+    <RepoRoot>$(MSBuildThisFileDirectory)</RepoRoot>
+  </PropertyGroup>
+
+  <Import Project="$(RepoRoot)Version.props" />
+  <Import Project="$(RepoRoot)eng/build/Common.props" />
+</Project>
