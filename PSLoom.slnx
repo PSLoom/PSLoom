@@ -3,6 +3,9 @@
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
     <File Path=".gitignore" />
+    <File Path="CHANGELOG.md" />
+    <File Path="cliff.toml" />
+    <File Path="CONTRIBUTING.md" />
     <File Path="Directory.Build.props" />
     <File Path="Directory.Build.targets" />
     <File Path="Directory.Packages.props" />
@@ -10,6 +13,7 @@
     <File Path="global.json" />
     <File Path="LICENSE.md" />
     <File Path="psloom.sync.psd1" />
+    <File Path="README.md" />
     <File Path="Version.props" />
   </Folder>
   <Folder Name="/eng/">
