@@ -108,3 +108,22 @@ CI runs the same script with `-Check` and fails when a copy has drifted. So does
 Releases are made by the `Prepare release` workflow, started by hand with the version. It writes the
 changelog section and `Version.props`, runs CI on the candidate, merges it into `main` and `develop`, tags
 it, and starts the `Release` workflow. Do not edit `CHANGELOG.md` or tag by hand.
+
+`Release` packs each module as a `.nupkg`, attaches it to the GitHub release, and publishes that same file to
+the PowerShell Gallery. A version with a pre-release suffix stays on GitHub. To build the package locally:
+
+```powershell
+dotnet build --configuration Release
+pwsh -NoProfile -File eng/New-ModulePackage.ps1
+```
+
+The Gallery job is skipped until the repository is set up for it. All three settings are needed:
+
+| Setting                                    | Where                                 | Purpose                                                       |
+| :----------------------------------------- | :------------------------------------ | :------------------------------------------------------------ |
+| Variable `PUBLISH_PSGALLERY` set to `true` | Repository variables                  | Opens the Gallery job. Without it the job is skipped.         |
+| Secret `PSGALLERY_API_KEY`                 | Repository or `psgallery` environment | The API key the job publishes with.                           |
+| Environment `psgallery`                    | Repository environments               | Where the job runs; add required reviewers to gate a publish. |
+
+Set `PUBLISH_PSGALLERY` as a repository variable, not as a variable of the environment. A published version
+cannot be replaced, only unlisted.

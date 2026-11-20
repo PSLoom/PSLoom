@@ -1,11 +1,15 @@
 name: Release
 
-# A tag v<version> builds the module and attaches it to a GitHub release. A plain MAJOR.MINOR.PATCH version
-# is also published to the PowerShell Gallery; a version with a pre-release suffix only gets the GitHub
-# release.
+# A tag v<version> builds the module, packs it as a .nupkg and attaches the package to a GitHub release. A
+# plain MAJOR.MINOR.PATCH version is also published to the PowerShell Gallery, from that same package; a
+# version with a pre-release suffix only gets the GitHub release.
+#
+# The Gallery job runs only when the repository variable PUBLISH_PSGALLERY is 'true'. It reads the secret
+# PSGALLERY_API_KEY and runs in the psgallery environment.
 #
 # It also starts by dispatch, which is how prepare-release.yml starts it: a tag pushed by a workflow does not
-# start another workflow. A dispatch has to be on the tag; on a branch, the first job fails.
+# start another workflow. A dispatch has to be on the tag; on a branch, the first job fails. Running it again
+# on a tag that already has a release replaces the packages of that release instead of failing.
 on:
   push:
     tags: ["v*"]
@@ -54,17 +58,17 @@ jobs:
       - run: dotnet test --no-build --configuration Release
 
       - name: Pack the modules
-        run: |
-          mkdir -p release-artifacts
-          cd artifacts/modules
-          for module in */; do
-            zip -r "../../release-artifacts/${module%/}-${GITHUB_REF_NAME#v}.zip" "$module"
-          done
+        run: pwsh -NoProfile -File eng/New-ModulePackage.ps1 -Destination release-artifacts
 
       - name: Create the GitHub release
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          # A release that already exists only gets its packages replaced, so the workflow can run again.
+          if gh release view "$GITHUB_REF_NAME" > /dev/null 2>&1; then
+            gh release upload "$GITHUB_REF_NAME" release-artifacts/*.nupkg --clobber
+            exit 0
+          fi
           flags=()
           case "$GITHUB_REF_NAME" in
             *-*) flags+=(--prerelease) ;;
@@ -76,7 +80,7 @@ jobs:
           else
             flags+=(--generate-notes)
           fi
-          gh release create "$GITHUB_REF_NAME" release-artifacts/*.zip --verify-tag "${flags[@]}"
+          gh release create "$GITHUB_REF_NAME" release-artifacts/*.nupkg --verify-tag "${flags[@]}"
 
   psgallery:
     name: PowerShell Gallery
@@ -88,15 +92,23 @@ jobs:
     permissions:
       contents: read
     steps:
-      - name: Download the modules of the release
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - uses: actions/setup-dotnet@0f4a354dd5547a28c70b7853dbd95d5b67886e73 # v6.1.0
+        with:
+          global-json-file: global.json
+
+      # Publishing a .nupkg needs the PSResourceGet that ships with this PowerShell.
+      - name: Install the PowerShell the module is built for
+        run: |
+          version="$(sed -n 's/.*Include="System.Management.Automation" Version="\([^"]*\)".*/\1/p' eng/build/Packages.props)"
+          dotnet tool install --global PowerShell --version "$version"
+          echo "$HOME/.dotnet/tools" >> "$GITHUB_PATH"
+
+      - name: Download the packages of the release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: |
-          gh release download "$GITHUB_REF_NAME" --repo "$GITHUB_REPOSITORY" --pattern '*.zip' --dir release-artifacts
-          mkdir -p modules
-          for archive in release-artifacts/*.zip; do
-            unzip -o "$archive" -d modules
-          done
+        run: gh release download "$GITHUB_REF_NAME" --pattern '*.nupkg' --dir release-artifacts
 
       - name: Publish
         env:
@@ -104,6 +116,6 @@ jobs:
         run: |
           pwsh -NoProfile -NonInteractive -Command '
             $ErrorActionPreference = "Stop"
-            foreach ($module in Get-ChildItem -LiteralPath modules -Directory) {
-              Publish-PSResource -Path $module.FullName -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY
+            foreach ($package in Get-ChildItem -LiteralPath release-artifacts -Filter *.nupkg) {
+              Publish-PSResource -NupkgPath $package.FullName -Repository PSGallery -ApiKey $env:PSGALLERY_API_KEY
             }'
