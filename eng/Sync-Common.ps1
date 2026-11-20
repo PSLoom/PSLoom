@@ -4,7 +4,7 @@
   Copies the files every PSLoom repository shares from eng/common/files into a repository.
 .DESCRIPTION
   The repository says what it is in psloom.sync.psd1 (Kind, Owner, Repo, Title). eng/common/sync.psd1 lists the
-  files of each kind. Line endings are compared and written as LF.
+  files every repository gets and what each kind adds. Line endings are compared and written as LF.
 .PARAMETER Path
   The root of the repository to update; the current directory when omitted.
 .PARAMETER Check
@@ -44,7 +44,9 @@ if (-not $catalog.Kinds.ContainsKey($config.Kind)) {
 
 $drifted = [System.Collections.Generic.List[string]]::new()
 
-foreach ($relative in $catalog.Kinds[$config.Kind]) {
+$files = @($catalog.Common) + @($catalog.Kinds[$config.Kind])
+
+foreach ($relative in $files) {
   $expected = Read-Normalized (Join-Path $commonRoot 'files' $relative)
   if ($relative -in $catalog.Templates) {
     $expected = $expected.Replace('{{Owner}}', $config.Owner).Replace('{{Repo}}', $config.Repo).Replace('{{Title}}', $config.Title)
