@@ -131,6 +131,46 @@ public sealed class SyncCommonTests {
     }
   }
 
+  [Fact]
+  public void AHarnessAlsoGetsTheContributingGuide() {
+    var directory = Directory.CreateTempSubdirectory("psloom-sync-");
+
+    try {
+      File.WriteAllText(Path.Combine(directory.FullName, "psloom.sync.psd1"),
+        "@{ Kind = 'Harness'; Owner = 'Acme'; Repo = 'Widget'; Title = 'Widget' }");
+
+      var result = PwshProcess.RunFile(Script, ["-Path", directory.FullName]);
+
+      Assert.Equal(0, result.ExitCode);
+
+      var guide = File.ReadAllText(Path.Combine(directory.FullName, "CONTRIBUTING.md"));
+
+      Assert.Contains("# Contributing to Widget", guide, StringComparison.Ordinal);
+      Assert.Contains("PSLoom.Widget", guide, StringComparison.Ordinal);
+      Assert.DoesNotContain("{{", guide, StringComparison.Ordinal);
+      Assert.True(File.Exists(Path.Combine(directory.FullName, ".editorconfig")));
+    }
+    finally {
+      directory.Delete(true);
+    }
+  }
+
+  [Fact]
+  public void TheBaseDoesNotGetTheHarnessGuide() {
+    var directory = Directory.CreateTempSubdirectory("psloom-sync-");
+
+    try {
+      File.WriteAllText(Path.Combine(directory.FullName, "psloom.sync.psd1"), CONFIG);
+
+      PwshProcess.RunFile(Script, ["-Path", directory.FullName]);
+
+      Assert.False(File.Exists(Path.Combine(directory.FullName, "CONTRIBUTING.md")));
+    }
+    finally {
+      directory.Delete(true);
+    }
+  }
+
   private static string Normalize(string text)
     => text.Replace("\r\n", "\n", StringComparison.Ordinal);
 }

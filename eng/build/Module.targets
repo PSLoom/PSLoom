@@ -20,6 +20,17 @@
 
     <MakeDir Directories="$(ModuleOutputDir)" />
     <Copy SourceFiles="$(TargetPath)" DestinationFolder="$(ModuleOutputDir)" SkipUnchangedFiles="true" />
-    <Exec Command="dotnet &quot;@(_ManifestToolAssembly)&quot; --assembly &quot;$(TargetPath)&quot; --template &quot;$(ModuleManifestTemplate)&quot; --output &quot;$(ModuleOutputDir)$(ModuleName).psd1&quot; --version &quot;$(Version)&quot;" />
+    <ItemGroup>
+      <_RequiredModuleArgument Include="@(RequiredPSModule->'--required-module &quot;%(Identity)=%(MinimumVersion)&quot;')" />
+    </ItemGroup>
+
+    <Exec Command="dotnet &quot;@(_ManifestToolAssembly)&quot; --assembly &quot;$(TargetPath)&quot; --template &quot;$(ModuleManifestTemplate)&quot; --output &quot;$(ModuleOutputDir)$(ModuleName).psd1&quot; --version &quot;$(Version)&quot; @(_RequiredModuleArgument, ' ')" />
+
+    <!--
+      A stray copy of a required module does not load twice: whichever copy loads first wins, so the required
+      module could end up running from this folder, with a stale assembly.
+    -->
+    <Error Condition="Exists('$(ModuleOutputDir)%(RequiredPSModule.Identity).dll')"
+           Text="The module folder '$(ModuleOutputDir)' holds a copy of %(RequiredPSModule.Identity).dll. A module never ships the assembly of a module it requires." />
   </Target>
 </Project>

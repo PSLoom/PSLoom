@@ -40,6 +40,26 @@ jobs:
           ref: refs/heads/develop
           fetch-depth: 0
 
+      # A harness is built against the repositories named by its <Repository>.ref files, checked out as siblings.
+      - name: Check out the neighbor repositories at their pinned refs
+        run: |
+          shopt -s nullglob
+          for pin in *.ref; do
+            name="${pin%.ref}"
+            ref="$(tr -d '[:space:]' < "$pin")"
+            git clone --quiet "https://github.com/$GITHUB_REPOSITORY_OWNER/$name.git" "../$name"
+            git -C "../$name" checkout --quiet --detach "$ref"
+          done
+
+      # The shared scripts and build files live in the base: here, or in the sibling checkout of a harness.
+      - name: Locate the shared engineering directory
+        run: |
+          if [ -d eng/build ]; then
+            echo "ENG=eng" >> "$GITHUB_ENV"
+          else
+            echo "ENG=../PSLoom/eng" >> "$GITHUB_ENV"
+          fi
+
       - name: Validate the version and record where main and develop are
         id: preflight
         env:
@@ -50,6 +70,16 @@ jobs:
             echo 'Expected MAJOR.MINOR.PATCH with an optional pre-release suffix.' >&2
             exit 1
           }
+          # A release is built against published versions of its neighbors, never against a commit.
+          shopt -s nullglob
+          for pin in *.ref; do
+            name="${pin%.ref}"
+            ref="$(tr -d '[:space:]' < "$pin")"
+            [[ -n "$(git ls-remote --tags "https://github.com/$GITHUB_REPOSITORY_OWNER/$name.git" "refs/tags/$ref")" ]] || {
+              echo "$pin holds '$ref', which is not a published tag of $name." >&2
+              exit 1
+            }
+          done
           tag="v$VERSION"
           git fetch --tags origin \
             +refs/heads/main:refs/remotes/origin/main \
@@ -93,14 +123,14 @@ jobs:
       - name: Write the version
         env:
           VERSION: ${{ inputs.version }}
-        run: pwsh -NoProfile -File eng/Set-Version.ps1 -Version "$VERSION"
+        run: pwsh -NoProfile -File "$ENG/Set-Version.ps1" -Version "$VERSION"
 
       - name: Check what changed and show it
         env:
           VERSION: ${{ inputs.version }}
         run: |
           set -euo pipefail
-          pwsh -NoProfile -File eng/Get-ChangelogSection.ps1 -Version "$VERSION" > "$RUNNER_TEMP/notes.md" || {
+          pwsh -NoProfile -File "$ENG/Get-ChangelogSection.ps1" -Version "$VERSION" > "$RUNNER_TEMP/notes.md" || {
             echo 'The changelog has no section for this version.' >&2
             exit 1
           }

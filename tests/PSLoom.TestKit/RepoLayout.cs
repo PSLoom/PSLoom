@@ -27,4 +27,18 @@ public static class RepoLayout {
   /// <returns>The path of <c>artifacts/modules</c> under the root.</returns>
   public static string ModulesDirectory(string root)
     => Path.Combine(root, "artifacts", "modules");
+
+  /// <summary>
+  ///   Gets the directories a repository resolves built modules from: its own, then one per neighbor repository
+  ///   pinned by a <c>&lt;Repository&gt;.ref</c> file in its root.
+  /// </summary>
+  /// <param name="root">The repository root.</param>
+  /// <returns>The module directories, the repository's own first.</returns>
+  public static IReadOnlyList<string> ModulePaths(string root) {
+    var neighbors = Directory.EnumerateFiles(root, "*.ref").Select(Path.GetFileNameWithoutExtension)
+      .Order(StringComparer.Ordinal)
+      .Select(name => ModulesDirectory(Path.GetFullPath(Path.Combine(root, "..", name!))));
+
+    return [ModulesDirectory(root), .. neighbors];
+  }
 }

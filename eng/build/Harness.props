@@ -1,0 +1,14 @@
+<Project>
+  <!--
+    Imported by a harness repository before its own Version.props. The base checked out next to the harness
+    is read here, so that the harness requires at least the version it was compiled against.
+  -->
+  <Import Project="$(MSBuildThisFileDirectory)../../Version.props" />
+
+  <PropertyGroup>
+    <PSLoomBaseVersion>$(Version)</PSLoomBaseVersion>
+    <PSLoomBaseModuleVersion>$(PSLoomBaseVersion.Split('-')[0])</PSLoomBaseModuleVersion>
+  </PropertyGroup>
+
+  <Import Project="$(MSBuildThisFileDirectory)Common.props" />
+</Project>
