@@ -23,4 +23,9 @@ public sealed class ContractVersionTests {
     Assert.Contains("contract 1.x", exception.Message, StringComparison.Ordinal);
     Assert.Contains("contract 2.x", exception.Message, StringComparison.Ordinal);
   }
+
+  [Fact]
+  public void AssemblyVersionIsTheContractMajorOnly() {
+    Assert.Equal(new Version(0, 0, 0, 0), ContractVersion.Current);
+  }
 }

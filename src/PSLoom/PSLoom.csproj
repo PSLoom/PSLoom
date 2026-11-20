@@ -5,4 +5,8 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <Description>The shell-ergonomics layer PowerShell never shipped with</Description>
   </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+  </ItemGroup>
 </Project>

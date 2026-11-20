@@ -1,0 +1,11 @@
+#nullable enable
+PSLoom.HarnessContractException
+PSLoom.HarnessContractException.CompiledAgainst.get -> System.Version!
+PSLoom.HarnessContractException.HarnessName.get -> string!
+PSLoom.HarnessContractException.Loaded.get -> System.Version!
+PSLoom.HarnessInfo
+PSLoom.HarnessInfo.CompiledAgainst.get -> System.Version!
+PSLoom.HarnessInfo.Name.get -> string!
+PSLoom.HarnessRegistry
+static PSLoom.HarnessRegistry.GetRegistered() -> System.Collections.Generic.IReadOnlyCollection<PSLoom.HarnessInfo!>!
+static PSLoom.HarnessRegistry.Register(System.Reflection.Assembly! harness) -> PSLoom.HarnessInfo!
