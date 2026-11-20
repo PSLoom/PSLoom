@@ -4,9 +4,8 @@
 namespace PSLoom;
 
 internal static class ContractVersion {
-  internal static Version Current { get; } = typeof(ContractVersion).Assembly.GetName().Version
-                                             ?? throw new InvalidOperationException(
-                                               "The PSLoom assembly has no version.");
+  internal static Version Current { get; } = typeof(ContractVersion).Assembly.GetName().Version ??
+                                             throw new InvalidOperationException("The PSLoom assembly has no version.");
 
   internal static void EnsureCompatible(string harnessName, Version compiledAgainst, Version current) {
     if (compiledAgainst.Major != current.Major) {

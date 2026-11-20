@@ -10,10 +10,8 @@ namespace PSLoom;
 /// </summary>
 public sealed class HarnessContractException : InvalidOperationException {
   internal HarnessContractException(string harnessName, Version compiledAgainst, Version loaded)
-    : base(
-      string.Create(
-        CultureInfo.InvariantCulture,
-        $"Harness '{harnessName}' was compiled against PSLoom contract {compiledAgainst.Major}.x, but the loaded PSLoom provides contract {loaded.Major}.x. Install a version of '{harnessName}' built for contract {loaded.Major}.x.")) {
+    : base(string.Create(CultureInfo.InvariantCulture,
+      $"Harness '{harnessName}' was compiled against PSLoom contract {compiledAgainst.Major}.x, but the loaded PSLoom provides contract {loaded.Major}.x. Install a version of '{harnessName}' built for contract {loaded.Major}.x.")) {
     HarnessName = harnessName;
     CompiledAgainst = compiledAgainst;
     Loaded = loaded;
