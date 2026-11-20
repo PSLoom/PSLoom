@@ -3,10 +3,12 @@
     <ContractMajor>0</ContractMajor>
     <AssemblyVersion>$(ContractMajor).0.0.0</AssemblyVersion>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+    <IsPowerShellModule>true</IsPowerShellModule>
     <Description>The shell-ergonomics layer PowerShell never shipped with</Description>
   </PropertyGroup>
 
   <ItemGroup>
     <PackageReference Include="Microsoft.CodeAnalysis.PublicApiAnalyzers" PrivateAssets="all" />
+    <PackageReference Include="System.Management.Automation" PrivateAssets="all" />
   </ItemGroup>
 </Project>

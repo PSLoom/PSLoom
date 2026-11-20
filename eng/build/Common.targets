@@ -1,2 +1,3 @@
 <Project>
+  <Import Project="$(MSBuildThisFileDirectory)Module.targets" Condition="'$(IsPowerShellModule)' == 'true'" />
 </Project>
