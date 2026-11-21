@@ -11,6 +11,8 @@ on:
         description: The commit to check; the ref of the calling run when empty.
         type: string
         default: ""
+  # Started by hand, on the branch or tag chosen for the run.
+  workflow_dispatch:
 
 concurrency:
   group: ci-${{ inputs.ref || github.ref }}
